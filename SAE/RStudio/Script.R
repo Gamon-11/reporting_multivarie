@@ -23,6 +23,7 @@ library(car)
 library(xtable)
 library(rsq)
 library(FactoMineR)
+library(factoextra)
 
 
 ################################################################################
@@ -127,7 +128,54 @@ ratios <- table_ratio[, cols_to_keep]
 rownames(ratios) <- ratios$id
 ratios <- ratios[, -1]
 
+
 ################################################################################
 # -------------------------  Analyse en Composante Principale ---------------- #
 ################################################################################
+
+res.pca <- PCA(ratios, scale.unit = TRUE, graph = TRUE,ncp = 8)
+# Extraire le pourcentage d'inertie cumulée
+
+res.pca$eig
+# En utilisant le critère de 80% de l'inertie restituée, on serait amener à séléctionner les 8 premières composantes.
+# Nous allons si après détaillé les 4 premières composantes principales :
+
+res.pca$var
+
+
+
+cor_matrix <- res.pca$var$cor[, 1:4]
+
+# Afficher la matrice
+print(cor_matrix)
+# Surligner correlation > |0.2|
+
+
+
+
+################################################################################
+# -------------------------     Classiffication automatique   ---------------- #
+################################################################################
+
+
+#ici on voit une cassure à 6 donc on choisi 6 class d'apres la methode du coude
+
+fviz_nbclust(res.pca$var$coord,
+             hcut,
+             method = "wss") +
+  geom_vline(xintercept = 6,
+             linetype = "dashed",
+             color = "red")
+
+clust_data <- res.pca$ind$coord[, 1:8]
+
+
+# Table des effectifs
+km.res <- kmeans(clust_data, centers = 6)
+# Créer un tableau des fréquences
+cluster_counts <- table(km.res$cluster)
+
+
+# Afficher le tableau
+print(df_clusters)
 
