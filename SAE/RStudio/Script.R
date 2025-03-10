@@ -99,8 +99,6 @@ ratio_cols <- grep("^ratio_", colnames(data), value = TRUE)
 
 # Créer une nouvelle table contenant uniquement les ratios
 table_ratio <- data[, c("id", ratio_cols), drop = FALSE]
-View(table_ratio)
-View(data)
 
 str(data)
 
@@ -115,4 +113,11 @@ cult_frequencies <- colSums(data[, cult_cols] != 0, na.rm = TRUE)
 top_8_cult <- names(sort(cult_frequencies, decreasing = TRUE))[1:8]
 elevage  <- grep("^El", colnames(data), value = TRUE)
 
-str(table_ratio)
+# Renommer top_8_cult
+top_8_cult <- gsub("^Cult(.*)Fin3$", "ratio_\\1", top_8_cult)
+# Renommer elevage
+elevage <- gsub("^El(.*)Fin3$", "ratio_\\1", elevage)
+
+cols_to_keep <- c("id", top_8_cult, elevage)
+ratios <- table_ratio[, cols_to_keep]
+
