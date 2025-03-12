@@ -174,8 +174,11 @@ clust_data <- res.pca$ind$coord[, 1:8]
 km.res <- kmeans(clust_data, centers = 6)
 # Créer un tableau des fréquences
 cluster_counts <- table(km.res$cluster)
+print(cluster_counts)
+# Créer un tableau avec les moyennes des variables par cluster
+cluster_means <- aggregate(clust_data, by = list(cluster = km.res$cluster), FUN = mean)
+print(cluster_means)
 
 
-# Afficher le tableau
-print(df_clusters)
-
+# tableau des cultures les plus frequente
+# Tableua de synthese description de la population (age à debut de carriere consomation de tabac...)
