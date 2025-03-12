@@ -24,6 +24,11 @@ library(xtable)
 library(rsq)
 library(FactoMineR)
 library(factoextra)
+library(magrittr)
+library(kableExtra)
+library(knitr)
+library(dplyr)
+library(gt)
 
 
 ################################################################################
@@ -53,12 +58,12 @@ data$date_deb_tot <- apply(
 
 
 data$date_fin_tot = apply(data[, c("BovFin2", "MouFin2", "CocFin2", "CheFin2", "VolFin2",
-                                "PraiFin2","VigneFin2", "MaisFin2", "BleFin2", "PoisFin2", 
-                                "BetFin2", "TouFin2", "ColFin2", "TabacFin2", "ArbFin2",
-                                "PdTFin2", "LegChampFin2", "SerresFin2")], 
-                       1,
-                       max,
-                       na.rm = TRUE)  
+                                   "PraiFin2","VigneFin2", "MaisFin2", "BleFin2", "PoisFin2", 
+                                   "BetFin2", "TouFin2", "ColFin2", "TabacFin2", "ArbFin2",
+                                   "PdTFin2", "LegChampFin2", "SerresFin2")], 
+                          1,
+                          max,
+                          na.rm = TRUE)  
 
 data$duree_tot = data$date_fin_tot - data$date_deb_tot
 
@@ -128,6 +133,22 @@ ratios <- table_ratio[, cols_to_keep]
 rownames(ratios) <- ratios$id
 ratios <- ratios[, -1]
 
+# Renommer les colonnes
+colnames(ratios) <- c(
+  "Prairies",          # ratio_Prai -> Prairies
+  "Blé ou orge",       # ratio_Ble -> Blé ou orge
+  "Mais",              # ratio_Mais -> Mais
+  "Vignes",            # ratio_Vigne -> Vignes
+  "Colza",             # ratio_Col -> Colza
+  "Tournesol",         # ratio_Tou -> Tournesol
+  "Bettraves",         # ratio_Bet -> Bettraves
+  "Pois fourragers",   # ratio_Pois -> Pois fourragers
+  "Bovins",            # ratio_Bov -> Bovins
+  "Moutons/Chèvres",   # ratio_Mou -> Moutons/chèvres
+  "Cochons",           # ratio_Coc -> Cochons
+  "Chevaux",           # ratio_Che -> Chevaux
+  "Volailles"          # ratio_Vol -> Volailles
+)
 
 ################################################################################
 # -------------------------  Analyse en Composante Principale ---------------- #
@@ -170,15 +191,33 @@ fviz_nbclust(res.pca$var$coord,
 clust_data <- res.pca$ind$coord[, 1:8]
 
 
-# Table des effectifs
+library(dplyr)
+
+# 1. Appliquer K-Means
 km.res <- kmeans(clust_data, centers = 6)
-# Créer un tableau des fréquences
-cluster_counts <- table(km.res$cluster)
+
+# 2. Créer un tableau des fréquences des clusters
+cluster_counts <- as.data.frame(table(km.res$cluster))
+colnames(cluster_counts) <- c("Cluster", "Effectif")  # Renommer les colonnes
 print(cluster_counts)
-# Créer un tableau avec les moyennes des variables par cluster
+
+# 3. Calculer les moyennes des variables par cluster
 cluster_means <- aggregate(clust_data, by = list(cluster = km.res$cluster), FUN = mean)
 print(cluster_means)
 
+# 4. Identifier les 4 plus grands clusters
+top_4_clusters <- cluster_counts %>%
+  arrange(desc(Effectif)) %>%  # Trier par effectif décroissant
+  slice_head(n = 4) %>%  # Sélectionner les 4 premiers
+  pull(Cluster)  # Extraire la colonne "Cluster"
+
+# 5. Filtrer les données pour ne garder que ces clusters
+data_top_clusters <- data.frame(cluster = km.res$cluster, clust_data) %>%
+  filter(cluster %in% top_4_clusters)
+
+print(data_top_clusters)
+
+data_top_clusters$desc.var$quanti
 
 # tableau des cultures les plus frequente
 # Tableua de synthese description de la population (age à debut de carriere consomation de tabac...)
