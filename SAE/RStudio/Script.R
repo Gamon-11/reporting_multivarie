@@ -223,13 +223,14 @@ cor_matrix <- as.data.frame(round(res.pca$var$cor[, 1:4], 2))
 # Appliquer le surlignage colonne par colonne
 cor_matrix_html <- cor_matrix %>%
   mutate(across(everything(), ~ cell_spec(.x, "html",
-                                          color = ifelse(.x > 0.6, "white",  # Blanc si fond rouge (>0.6)
-                                                         ifelse(.x > 0.4, "white",   # Blanc si fond orange (>0.4)
-                                                                ifelse(.x > 0.2, "black", "black"))),  # Noir si fond jaune (0.2<x≤0.4), Noir sinon
-                                          background = ifelse(.x > 0.6, "red",   # Rouge si > 0.6
-                                                              ifelse(.x > 0.4, "orange",   # Orange si > 0.4
-                                                                     ifelse(.x > 0.2, "yellow", "white"))),  # Jaune si > 0.2, sinon blanc
+                                          color = ifelse(abs(.x) > 0.6, "white",  # Blanc si fond rouge (>0.6)
+                                                         ifelse(abs(.x) > 0.4, "white",   # Blanc si fond orange (>0.4)
+                                                                ifelse(abs(.x) > 0.2, "black", "black"))),  # Noir si fond jaune (0.2<x≤0.4), Noir sinon
+                                          background = ifelse(abs(.x) > 0.6, "red",   # Rouge si |x| > 0.6
+                                                              ifelse(abs(.x) > 0.4, "orange",   # Orange si |x| > 0.4
+                                                                     ifelse(abs(.x) > 0.2, "yellow", "transparent"))),  # Jaune si |x| > 0.2, sinon blanc
                                           align = "center")))
+
 
 # Générer le tableau HTML avec kableExtra
 cor_matrix_html %>%
@@ -265,9 +266,9 @@ clust_data <- res.pca$ind$coord[, 1:8]
 ################################################################################
 # -------------------------  Tableau des effectifs par cluster     -------------#
 ################################################################################
-
+set.seed(123)
 # 1. Appliquer K-Means
-km.res <- kmeans(clust_data, centers = 8)
+km.res <- kmeans(clust_data, centers = 8,nstart = 50)
 
 # 2. Créer un tableau des fréquences des clusters
 cluster_counts <- as.data.frame(table(km.res$cluster))
