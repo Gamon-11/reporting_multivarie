@@ -151,6 +151,55 @@ colnames(ratios) <- c(
 )
 
 
+
+
+# Pourcentage de la tâche pratiquée vis-à-vis de la carrière totale
+# Liste des tâches pour chaque activité
+taches_agricoles <- list(
+  Prairies = c("PraiHerDebFinale2", "PraiFoinDebFinale2"),
+  Vigne = c("VignePfaconDebFinale2", "VignePestDebFinale2", "VigneVendDebFinale2","VigneChaiDebFinale2","VigneEntDebFinale2"),
+  Mais = c("MaisSemenDebFinale2", "MaisSemisDebFinale2", "MaisPestDebFinale2","MaisRecDebFinale2"),
+  Blé = c("BleSemenDebFinale2", "BleSemisDebFinale2", "BlePestDebFinale2","BleRecDebFinale2"),
+  Pois = c("PoisSemenDebFinale2", "PoisSemisDebFinale2", "PoisPestDebFinale2","PoisRecDebFinale2"),
+  Betteraves = c("BetSemenDebFinale2", "BetSemisDebFinale2", "BetPestDebFinale2","BetRecDebFinale2"),
+  Tournesol = c("TouSemenDebFinale2", "TouSemisDebFinale2", "TouPestDebFinale2","TouRecDebFinale2"),
+  Colza = c("ColSemenDebFinale2", "ColSemisDebFinale2", "ColPestDebFinale2","ColRecDebFinale2"),
+  Tabac = c("TabacSemisDebFinale2", "TabacPestDebFinale2","TabacRecDebFinale2"),
+  Arboriculture = c("ArbTailleDebFinale2", "ArbPestDebFinale2","ArbRecDebFinale2")
+)
+
+# Calculer la durée de chaque tâche (différence entre dates de début et de fin)
+for (tache in unlist(taches_agricoles)) {
+  fin_tache <- gsub("DebFinale2", "FinFinale2", tache)  # Trouver la colonne de fin correspondante
+  data[[paste0("duree_", tache)]] <- data[[fin_tache]] - data[[tache]]  # Calcul de la durée
+}
+
+# Calculer le pourcentage de chaque tâche
+for (tache in unlist(taches_agricoles)) {
+  # Calculer la durée de la tâche
+  fin_tache <- gsub("DebFinale2", "FinFinale2", tache)
+  duree_tache <- data[[fin_tache]] - data[[tache]]
+  
+  # Calculer le pourcentage
+  data[[paste0("pourcentage_", tache)]] <- 
+    ifelse(data$duree_tot > 0, 
+           (duree_tache / data$duree_tot) * 100, 
+           NA)
+}
+
+# Créer ratio2
+ratio2 <- data %>%
+  select(id, starts_with("pourcentage_"))
+
+# Ajuster les noms de colonnes
+colnames(ratio2) <- gsub("pourcentage_", "ratio_", colnames(ratio2))
+colnames(ratio2) <- gsub("DebFinale2", "", colnames(ratio2))
+
+# Aperçu des résultats
+head(ratio2)
+
+
+
 ################################################################################
 #                         Tableau des valeurs propres                          #
 ################################################################################
@@ -335,9 +384,9 @@ top_3_freq <- top_8_cult_table %>%
 culture_matrix_html <- top_8_cult_table %>% 
   mutate(
     Fréquence = cell_spec(Fréquence, "html", 
-                         color = ifelse(Fréquence %in% top_3_freq, "white", "black"),  # Blanc si top 4, sinon noir
-                         background = ifelse(Fréquence %in% top_3_freq, "red", "white"),  # Rouge si top 4, sinon blanc
-                         align = "center")
+                          color = ifelse(Fréquence %in% top_3_freq, "white", "black"),  # Blanc si top 4, sinon noir
+                          background = ifelse(Fréquence %in% top_3_freq, "red", "white"),  # Rouge si top 4, sinon blanc
+                          align = "center")
   )
 
 
@@ -407,89 +456,124 @@ tableau_synthese_html %>%
 # Rasmata
 #######
 
-
+# Étape 3 : Fusionner les résultats du clustering (ID et cluster) avec les ratios
+# Créer un dataframe des résultats K-means
 km_res_df <- data.frame(ID = names(km.res$cluster), cluster = km.res$cluster)
 
+# Fusionner les résultats K-means avec le dataframe des ratios (les données de départ)
 merged_df <- merge(ratios, km_res_df, by.x = 0, by.y = "ID")
 names(merged_df)[1] <- "ID"  # Renommer la première colonne en "ID"
 
+# Étape 4 : Identifier les 4 clusters ayant la plus grande taille
+# Calculer la taille de chaque cluster
 cluster_sizes <- table(merged_df$cluster)
 
+# Identifier les 4 clusters les plus grands
 top_clusters <- sort(cluster_sizes, decreasing = TRUE)[1:4]
 top_cluster_ids <- as.integer(names(top_clusters))  # Récupérer les IDs des 4 meilleurs clusters
 
+# Étape 5 : Filtrer pour ne garder que les 4 meilleurs clusters
+# Filtrer le dataframe pour ne garder que les données des meilleurs clusters
 filtered_df <- merged_df[merged_df$cluster %in% top_cluster_ids, ]
 filtered_df$cluster <- as.factor(filtered_df$cluster)  # Convertir "cluster" en facteur
+
 
 filtered_df <- filtered_df %>%
   mutate(across(where(is.numeric), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
 
+# Renommer la deuxième colonne "ID"
 names(filtered_df)[which(names(filtered_df) == "ID")[2]] <- "ID_duplicated"
 
-numeric_cols <- sapply(filtered_df, is.numeric)
-numeric_cols["cluster"] <- FALSE 
-var_names <- names(filtered_df)[numeric_cols]
 
+# Étape 6 : Calculer les moyennes par cluster pour les variables numériques
+# Identifier les colonnes numériques (en excluant la colonne "cluster")
+numeric_cols <- sapply(filtered_df, is.numeric)
+numeric_cols["cluster"] <- FALSE  # Exclure la colonne "cluster" des variables numériques
+var_names <- names(filtered_df)[numeric_cols]  # Obtenir les noms des variables numériques
+
+# Créer un dataframe pour stocker les résultats des moyennes par cluster
 result_df <- data.frame(Variable = var_names)
 
+# Calculer la moyenne de chaque variable numérique pour chaque cluster
 for (cl in top_cluster_ids) {
   cluster_data <- filtered_df[filtered_df$cluster == cl, ]
   means <- sapply(var_names, function(var) mean(cluster_data[[var]], na.rm = TRUE))
   col_name <- paste0("Moyenne_C", cl)
-  result_df[[col_name]] <- means
+  result_df[[col_name]] <- means  # Ajouter les moyennes au dataframe result_df
 }
 
+# Étape 7 : Calculer la moyenne globale pour chaque variable
 global_means <- sapply(var_names, function(var) mean(merged_df[[var]], na.rm = TRUE))
-result_df$Moyenne_Globale <- global_means  
+result_df$Moyenne_Globale <- global_means  # Ajouter la moyenne globale dans result_df
 
+# Étape 8 : Appliquer catdes() pour obtenir les v-tests
 res.catdes <- catdes(filtered_df, num.var = which(names(filtered_df) == "cluster"),proba = 1)
+str(res.catdes)
 
+# Détection dynamique des clusters disponibles
+bon_cluster <- as.numeric(names(res.catdes$quanti))  # Extrait les numéros des clusters
 
-bon_cluster <- as.numeric(names(res.catdes$quanti))
-
+# Initialisation du dataframe avec les noms des variables du premier cluster trouvé
 final_df <- data.frame(Variable = rownames(res.catdes$quanti[[bon_cluster[1]]]))
 
+# Boucle sur les clusters trouvés dynamiquement
 for (cl in bon_cluster) {
+  
+  # Extraction des valeurs pour le cluster donné
   mean_values <- res.catdes$quanti[[as.character(cl)]][, "Mean in category"]
   v_test_values <- res.catdes$quanti[[as.character(cl)]][, "v.test"]
   
+  # Ajout des colonnes au dataframe avec des noms dynamiques (Mean_C en premier, V_test_C ensuite)
   final_df[[paste0("Moy c", cl)]] <- mean_values[match(final_df$Variable, rownames(res.catdes$quanti[[as.character(cl)]]))]
   final_df[[paste0("v-test c", cl)]] <- v_test_values[match(final_df$Variable, rownames(res.catdes$quanti[[as.character(cl)]]))]
 }
 
+# Calcul de la moyenne globale des variables
 final_df$Moyenne <- rowMeans(sapply(bon_cluster, function(cl) {
   res.catdes$quanti[[as.character(cl)]][, "Mean in category"]
 }), na.rm = TRUE)
 
-final_df[,-1] <- round(final_df[,-1], 3)  
+# Arrondi les valeurs à 3 chiffres après la virgule
+final_df[,-1] <- round(final_df[,-1], 3)  # En excluant la colonne "Variable"
 
+# Réorganisation des colonnes : pour chaque cluster, on met la moyenne puis le v-test
 ordered_cols <- c("Variable")
 for (cl in bon_cluster) {
   ordered_cols <- c(ordered_cols, paste0("Moy c", cl), paste0("v-test c", cl))
 }
 
+# Ajouter la Moyenne à la fin
 ordered_cols <- c(ordered_cols, "Moyenne")
 
+# Réorganiser le dataframe avec les colonnes dans le bon ordre
 final_df <- final_df[, ordered_cols]
 
+
+# S'assurer que les colonnes v-test sont numériques
 vtest_cols <- grep("^v-test", names(final_df))
 for (col in vtest_cols) {
   final_df[[col]] <- as.numeric(as.character(final_df[[col]]))
 }
+
+# Créer une copie du dataframe pour le formatage
 formatted_df <- final_df
 
+# Identifier les colonnes des moyennes et des v-tests
 moy_cols <- grep("^Moy", names(formatted_df))
 vtest_cols <- grep("^v-test", names(formatted_df))
 
+# Parcourir chaque paire de colonnes (moyenne et v-test correspondant)
 for (i in 1:length(moy_cols)) {
   moy_col <- moy_cols[i]
   vtest_col <- vtest_cols[i]
   
-
+  # Pour chaque ligne, vérifier si |v-test| > 10
   for (row in 1:nrow(formatted_df)) {
+    # Vérifier que la valeur est numérique avant d'appliquer abs()
     if (!is.na(formatted_df[row, vtest_col]) && 
         is.numeric(formatted_df[row, vtest_col]) && 
         abs(formatted_df[row, vtest_col]) > 10) {
+      # Convertir la valeur moyenne en cellule formatée en rouge
       formatted_df[row, moy_col] <- cell_spec(
         formatted_df[row, moy_col], 
         "html", 
@@ -500,7 +584,6 @@ for (i in 1:length(moy_cols)) {
   }
 }
 
-
-# Table HTML
+# Créer le tableau HTML avec kbl()
 kbl(formatted_df, escape = FALSE, align = "c") %>%
   kable_styling(full_width = FALSE, font_size = 14)
