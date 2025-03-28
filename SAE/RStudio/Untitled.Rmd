@@ -43,13 +43,13 @@ data = readRDS("../Data/data1975Agrican")
 ```
 
 
-## Introduction
+## **Introduction**
 
 L’agriculture est un secteur clé de l’économie, mais il expose les travailleurs à divers risques professionnels, notamment des expositions prolongées aux pesticides, aux poussières et aux agents biologiques. Ces expositions sont suspectées d’augmenter le risque de certains cancers, rendant essentielle l’étude des liens entre agriculture et santé. Les métiers agricoles sont variés, allant des grandes cultures à l’élevage, avec des niveaux d’exposition différenciés selon les pratiques et les produits utilisés.
 À l’aide de méthodes factorielles, notamment l’Analyse en Composantes Principales (ACP), nous identifions les corrélations entre pratiques agricoles et expositions. Ensuite, le clustering par la méthode des K-means permet de regrouper les individus en profils homogènes, facilitant l’analyse des risques sanitaires spécifiques à chaque groupe.
 
 
-## Description population
+## **Description population**
 
 
 L’étude s’appuie sur la cohorte [**AGRICAN**](https://www.agrican.fr), qui vise à évaluer l’impact des expositions professionnelles agricoles sur le risque de développer un cancer. Cette cohorte comprend environ 180 000 affiliés à la Mutualité Sociale Agricole (MSA) ayant accepté de participer à l’étude, parmi les 567 000 personnes initialement éligibles. Elle regroupe des agriculteurs, des exploitants et des salariés, ainsi que des travailleurs de secteurs liés à l’agriculture. Tous étaient affiliés à la MSA depuis au moins trois ans et résidaient dans l’un des 11 départements français disposant d’un registre des cancers.
@@ -178,7 +178,7 @@ colnames(ratios) <- c(
 
 Pour commencer, nous avons décidé de réaliser une Analyse en Composantes Principales (ACP) sur les 8 cultures et les 5 types d’élevages les plus représentés dans notre jeu de données.
 
-### Cultures les plus représentées  
+#### Cultures les plus représentées  
 Les 8 cultures sélectionnées sont :  
 - Prairies  
 - Blé ou orge  
@@ -189,7 +189,7 @@ Les 8 cultures sélectionnées sont :
 - Betteraves  
 - Pois fourragers  
 
-### Élevages les plus représentés  
+#### Élevages les plus représentés  
 Les 5 types d’élevages retenus sont :  
 - Bovins  
 - Moutons/Chèvres  
@@ -200,6 +200,9 @@ Les 5 types d’élevages retenus sont :
 
 
 Cette analyse nous permettra d’identifier les principales tendances et similitudes entre ces cultures et élevages, facilitant ainsi l’interprétation des données.  
+
+
+### **Sélection des Axes**
 
 Pour choisir nos axes, nous avons cherché à conserver **80 % de l’inertie cumulée**. Comme le montre le [tableau ci-dessous](#tableau-valeurs-propres), nous atteignons cet objectif en conservant nos **8 premières composantes principales**.  
 
@@ -236,13 +239,23 @@ df %>%
 
 
 ```
+### **Analyse du Nuage des Variables**
 
-Après avoir choisis nos 8 composantes principales nous réalisons la représentation du [nuages des variables](#nuages-des-variables). Sur ce dérnier, on peut observer que les variables 
+
+Après avoir identifiés nos 8 composantes principales, nous réalisons la représentation du [nuages des variables](#nuages-des-variables) avec les deux premières composantes principales (CP1 et CP2).
+
+Sur ce dernier, on peut observer que les variables **"Blé ou Orge"**, **"Maïs"**, **"Prairies"** et **"Bovins"** sont corrélées positivement avec le premier axe.  
+
+La variable **"Vignes"** est, quant à elle, corrélée négativement avec ce dernier.  
+
+Les variables **"Pois Fourragers"** et **"Colza"** sont corrélées positivement avec le second axe.  
+
+Toutes ces variables évoquées sont globalement bien représentées sur le plan factoriel.
+
+En revanche, les autres variables sont mal représentées dans ce plan, notamment "Cochons", "Volailles" et "Chevaux". Par conséquent, elles ne seront pas pertinentes pour notre analyse.
 
 <div style="text-align: center;">
-  
 #### Nuages des variables {#nuages-des-variables}  
-
 </div>
 
 ```{r Analyse_en_Composante_Principale,message=FALSE, warning=FALSE, echo=FALSE,fig.align="center"}
@@ -281,9 +294,23 @@ inertie_cum = res.pca$eig
 
 
 
+### **Analyse des Corrélations et Identification des Axes Principaux**
+
+Pour obtenir une vue d'ensemble plus globale, nous nous sommes appuyés sur la [matrice des corrélations](#mat-corr) et avons choisi de nous concentrer sur les quatre premiers axes.  
+
+Dans ce tableau, les variables mises en évidence en **rouge** sont celles qui présentent la plus forte corrélation (> 60 %) avec leur axe respectif. Celles en **orange** sont corrélées à au moins 40 %, et celles en **jaune** à au moins 20 %.  
+
+- Concernant le **premier axe**, la variable **"Blé ou Orge"** est la mieux représentée, avec un coefficient de corrélation de **0,83**, indiquant une très forte association.  
+
+- Pour le **deuxième axe**, c'est la variable **"Pois Fourragers"** qui est la plus corrélée, avec un coefficient de **0,65**.  
+
+- En ce qui concerne le **troisième axe factoriel**, la variable la mieux représentée est **"Chevaux"**, avec un coefficient de **0,48**.  
+
+- Enfin, pour le **quatrième axe**, la variable la plus corrélée est **"Betterave"**, avec un coefficient de **-0,52**.  
+
+
 <div style="text-align: center;">
-  
-#### Matrice des corélation entre les variables et les composantes principales {#mat-corr}  
+#### Matrice des corélation entre les variables et les composantes principales {#mat-corr}
 </div>
 
 ```{r mat_corr_var_CP, results='asis', echo=FALSE}
@@ -296,13 +323,14 @@ cor_matrix <- as.data.frame(round(res.pca$var$cor[, 1:4], 2))
 # Appliquer le surlignage colonne par colonne
 cor_matrix_html <- cor_matrix %>%
   mutate(across(everything(), ~ cell_spec(.x, "html",
-                                          color = ifelse(.x > 0.6, "white",  # Blanc si fond rouge (>0.6)
-                                                         ifelse(.x > 0.4, "white",   # Blanc si fond orange (>0.4)
-                                                                ifelse(.x > 0.2, "black", "black"))),  # Noir si fond jaune (0.2<x≤0.4), Noir sinon
-                                          background = ifelse(.x > 0.6, "red",   # Rouge si > 0.6
-                                                              ifelse(.x > 0.4, "orange",   # Orange si > 0.4
-                                                                     ifelse(.x > 0.2, "yellow", "white"))),  # Jaune si > 0.2, sinon blanc
+                                          color = ifelse(abs(.x) > 0.6, "white", 
+                                                         ifelse(abs(.x) > 0.4, "white",   
+                                                                ifelse(abs(.x) > 0.2, "black", "black"))),
+                                          background = ifelse(abs(.x) > 0.6, "red",
+                                                              ifelse(abs(.x) > 0.4, "orange",
+                                                                     ifelse(abs(.x) > 0.2, "yellow", "transparent"))),
                                           align = "center")))
+
 
 # Générer le tableau HTML avec kableExtra
 cor_matrix_html %>%
@@ -323,18 +351,28 @@ cor_matrix_html %>%
 ```
 
 
+Après avoir réalisé l'ACP, nous cherchons à constituer des classes d'individues afin de comprendre leur caractéristique principales. Pour ce faire nous allons utiliser les k-means. Les k-means sont un algorithme de classification non supervisée qui partitionne un ensemble de données en k groupes en minimisant la variance intra-cluster.
+
+### **Détermination du nombre optimal de clusters**
+
+Pour déterminer le nombre optimal de clusters, nous avons utilisé la **méthode du coude**. Cette technique consiste à tracer la courbe de l'inertie intra-cluster en fonction du nombre de clusters (k). Le point où la diminution de l'inertie ralentit brusquement correspond généralement au nombre optimal de clusters.
+
+Sur notre [graphique](#coude) , une cassure est observable à partir de **huit clusters**. Nous retenons donc **huit** comme nombre optimal de clusters, car au-delà de ce seuil, la réduction de l'inertie devient moins significative.
+
+
+
+
 <div style="text-align: center;">
   
-#### Variance Interclasse {#coude}  
+#### Variance intra-classe {#coude}  
 
 </div>
+
 
 ```{r fig.width=6, fig.height=6, fig.align='center',echo=FALSE}
 # -----------------------------------------------------------------------------#
 # ------------------------- Coude pour le nombre de cluster -------------------#
 # -----------------------------------------------------------------------------#
-
-#ici on voit une cassure à 6 donc on choisi 6 class d'apres la methode du coude
 
 fviz_nbclust(res.pca$var$coord,
              hcut,
@@ -349,6 +387,16 @@ clust_data <- res.pca$ind$coord[, 1:8]
 ```
 
 
+### **Sélection des clusters les plus représentatifs**
+
+En choisissant **huit clusters**, nous observons une répartition inégale des effectifs. Pour notre étude, nous nous concentrerons uniquement sur les **quatre clusters les plus représentés** :  
+
+- **Cluster 1** : 857 individus  
+- **Cluster 2** : 3 497 individus  
+- **Cluster 5** : 710 individus  
+- **Cluster 6** : 3 405 individus  
+
+Cette sélection permet d’analyser les groupes ayant le plus d’impact tout en évitant ceux dont l’effectif est trop faible pour être significatif.
 
 <div style="text-align: center;">
   
@@ -361,9 +409,10 @@ clust_data <- res.pca$ind$coord[, 1:8]
 # -----------------------  Tableau des effectifs par cluster ------------------#
 # -----------------------------------------------------------------------------#
 
-
+set.seed(123)
 # 1. Appliquer K-Means
-km.res <- kmeans(clust_data, centers = 8)
+km.res <- kmeans(clust_data, centers = 8,nstart = 50)
+
 
 # 2. Créer un tableau des fréquences des clusters
 cluster_counts <- as.data.frame(table(km.res$cluster))
@@ -451,6 +500,28 @@ culture_matrix_html %>%
 ```
 
 
+
+### **Analyse des quatre clusters les plus représentés**
+
+Après avoir identifié les **quatre clusters** les plus représentés, nous analysons ces groupes en nous basant sur **cinq variables clés** : l'effectif, l'âge moyen au début de la carrière, la proportion de fumeurs, le nombre moyen de paquets consommés annuellement et la durée moyenne d’activité. Ces indicateurs révèlent des différences notables en termes d’**âge d’entrée en activité**, de **tabagisme** et de **stabilité professionnelle**.
+
+**Cluster 1 :**  
+Les individus commencent en moyenne leur carrière à **20 ans**. La majorité ne fume pas (moins d’un sur deux), et parmi les fumeurs, la consommation atteint environ **14 paquets** par an. Ce groupe a également de la **durée d’activité la plus longue**.
+
+**Cluster 2 :**  
+Ce cluster se caractérise par un début de carrière très précoce (**19 ans en moyenne**) et la **plus faible proportion de fumeurs**, dont la consommation est d’environ **12 paquets** par an. La durée d’activité y est élevée, avoisinant les **28 ans** en moyenne.
+
+**Cluster 5 :**  
+Les individus entament leur carrière autour de **19,85 ans**. La proportion de fumeurs est importante (**51,83 %**), avec une consommation d’environ **15,6 paquets** par an.
+
+**Cluster 6 :**  
+Ce groupe présente le début de carrière le plus tardif, la **plus forte proportion de fumeurs** et une consommation moyenne de **16 paquets** par an, bien que sa durée d’activité soit la **plus courte**.
+
+Ces observations mettent en lumière des profils distincts : certains groupes présentent une exposition plus marquée au tabagisme, tandis que d’autres affichent des caractéristiques propres à un début de carrière plus précoce ou tardif. Ces résultats offrent des pistes concrètes pour adapter les politiques de prévention aux spécificités de chaque cluster.
+
+
+
+
 <div style="text-align: center;">
   
 #### Description des clusteurs {#des-clust}  
@@ -509,81 +580,116 @@ tableau_synthese_html %>%
   kbl(escape = FALSE, align = "c") %>%
   kable_styling(full_width = FALSE, font_size = 14)
 ```
+### **Analyse Rasmata**
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur quis dolor nec urna malesuada tincidunt. Praesent fringilla convallis velit, ut fermentum enim varius a. Sed in risus nec lorem vulputate mollis. Nullam auctor nisi sed dolor consectetur, at facilisis magna malesuada.
+
+Suspendisse potenti. Integer dapibus, lorem ac interdum dignissim, erat nisl malesuada nisl, at pellentesque metus nisi et arcu. Fusce ut ipsum ut turpis volutpat tristique in in risus. Morbi nec tortor ac
 
 
+<div style="text-align: center;">
+  
+#### Table Rasmata {#des-tbl_rasmata}  
 
+</div>
 
+```{r des-tbl_rasmata, results='asis', echo=FALSE, warning=FALSE}
 
-Vignettes are long form documentation commonly included in packages. Because
-they are part of the distribution of the package, they need to be as compact as
-possible. The `html_pretty` output format in package
-[**prettydoc**](https://github.com/yixuan/prettydoc/) , an alternative
-to `html_document` and `html_vignette` contained in the `rmarkdown` package,
-is able to generate small and nice HTML pages.
+km_res_df <- data.frame(ID = names(km.res$cluster), cluster = km.res$cluster)
 
-## Styles
+merged_df <- merge(ratios, km_res_df, by.x = 0, by.y = "ID")
+names(merged_df)[1] <- "ID"  # Renommer la première colonne en "ID"
 
-Currently `html_pretty` supports three page themes, `cayman` (the default),
-`tactile`, and `architect`. And there are also two syntax highlight styles:
-`github` to mimic the syntax highlight on Github, and `vignette` that is used by
-`html_vignette`. If no highlight parameter is given, the default style created
-by Pandoc will be used.
+cluster_sizes <- table(merged_df$cluster)
 
-The theme and highlight styles can be given in the document metadata,
-for example:
+top_clusters <- sort(cluster_sizes, decreasing = TRUE)[1:4]
+top_cluster_ids <- as.integer(names(top_clusters))  # Récupérer les IDs des 4 meilleurs clusters
 
-```yaml
-output:
-  prettydoc::html_pretty:
-    theme: cayman
-    highlight: github
-```
+filtered_df <- merged_df[merged_df$cluster %in% top_cluster_ids, ]
+filtered_df$cluster <- as.factor(filtered_df$cluster)  # Convertir "cluster" en facteur
 
+filtered_df <- filtered_df %>%
+  mutate(across(where(is.numeric), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
 
-## Happy Knitting!
+names(filtered_df)[which(names(filtered_df) == "ID")[2]] <- "ID_duplicated"
 
-Feel free to use the `knitr` infrastructure with dozens of tunable options in
-your package vignette.
+numeric_cols <- sapply(filtered_df, is.numeric)
+numeric_cols["cluster"] <- FALSE 
+var_names <- names(filtered_df)[numeric_cols]
 
-```{r fig.width=6, fig.height=6, fig.align='center'}
-set.seed(123)
-n <- 1000
-x1  <- matrix(rnorm(n), ncol = 2)
-x2  <- matrix(rnorm(n, mean = 3, sd = 1.5), ncol = 2)
-x   <- rbind(x1, x2)
-head(x)
-smoothScatter(x, xlab = "x1", ylab = "x2")
-```
+result_df <- data.frame(Variable = var_names)
 
-You can also include code snippets of languages other than R, but note that
-the block header has no curly brackets around the language name.
-
-```cpp
-// [[Rcpp::export]]
-NumericVector timesTwo(NumericVector x) {
-    return x * 2;
+for (cl in top_cluster_ids) {
+  cluster_data <- filtered_df[filtered_df$cluster == cl, ]
+  means <- sapply(var_names, function(var) mean(cluster_data[[var]], na.rm = TRUE))
+  col_name <- paste0("Moyenne_C", cl)
+  result_df[[col_name]] <- means
 }
+
+global_means <- sapply(var_names, function(var) mean(merged_df[[var]], na.rm = TRUE))
+result_df$Moyenne_Globale <- global_means  
+
+res.catdes <- catdes(filtered_df, num.var = which(names(filtered_df) == "cluster"),proba = 1)
+
+
+bon_cluster <- as.numeric(names(res.catdes$quanti))
+
+final_df <- data.frame(Variable = rownames(res.catdes$quanti[[bon_cluster[1]]]))
+
+for (cl in bon_cluster) {
+  mean_values <- res.catdes$quanti[[as.character(cl)]][, "Mean in category"]
+  v_test_values <- res.catdes$quanti[[as.character(cl)]][, "v.test"]
+  
+  final_df[[paste0("Moy c", cl)]] <- mean_values[match(final_df$Variable, rownames(res.catdes$quanti[[as.character(cl)]]))]
+  final_df[[paste0("v-test c", cl)]] <- v_test_values[match(final_df$Variable, rownames(res.catdes$quanti[[as.character(cl)]]))]
+}
+
+final_df$Moyenne <- rowMeans(sapply(bon_cluster, function(cl) {
+  res.catdes$quanti[[as.character(cl)]][, "Mean in category"]
+}), na.rm = TRUE)
+
+final_df[,-1] <- round(final_df[,-1], 3)  
+
+ordered_cols <- c("Variable")
+for (cl in bon_cluster) {
+  ordered_cols <- c(ordered_cols, paste0("Moy c", cl), paste0("v-test c", cl))
+}
+
+ordered_cols <- c(ordered_cols, "Moyenne")
+
+final_df <- final_df[, ordered_cols]
+
+vtest_cols <- grep("^v-test", names(final_df))
+for (col in vtest_cols) {
+  final_df[[col]] <- as.numeric(as.character(final_df[[col]]))
+}
+formatted_df <- final_df
+
+moy_cols <- grep("^Moy", names(formatted_df))
+vtest_cols <- grep("^v-test", names(formatted_df))
+
+for (i in 1:length(moy_cols)) {
+  moy_col <- moy_cols[i]
+  vtest_col <- vtest_cols[i]
+  
+
+  for (row in 1:nrow(formatted_df)) {
+    if (!is.na(formatted_df[row, vtest_col]) && 
+        is.numeric(formatted_df[row, vtest_col]) && 
+        abs(formatted_df[row, vtest_col]) > 10) {
+      formatted_df[row, moy_col] <- cell_spec(
+        formatted_df[row, moy_col], 
+        "html", 
+        color = "white", 
+        background = "red"
+      )
+    }
+  }
+}
+
+
+# Table HTML
+kbl(formatted_df, escape = FALSE, align = "c") %>%
+  kable_styling(full_width = FALSE, font_size = 14)
+
 ```
-
-You can write math expressions, e.g. $Y = X\beta + \epsilon$,
-footnotes^[A footnote here.], and tables, e.g. using `knitr::kable()`.
-
-```{r, echo=FALSE, results='asis'}
-knitr::kable(head(iris, 10))
-```
-
-## Stay Tuned
-
-[**prettydoc**](https://github.com/yixuan/prettydoc/)
-Please visit the [development page](https://github.com/yixuan/prettydoc/) of the 
-`prettydoc` package for latest updates and news. Comments, bug reports and
-pull requests are always welcome.
-
-
-
-
-
-
-
-
-
