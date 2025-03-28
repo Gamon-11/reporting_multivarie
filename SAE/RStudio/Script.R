@@ -151,6 +151,55 @@ colnames(ratios) <- c(
 )
 
 
+
+
+# Pourcentage de la tâche pratiquée vis-à-vis de la carrière totale
+# Liste des tâches pour chaque activité
+taches_agricoles <- list(
+  Prairies = c("PraiHerDebFinale2", "PraiFoinDebFinale2"),
+  Vigne = c("VignePfaconDebFinale2", "VignePestDebFinale2", "VigneVendDebFinale2","VigneChaiDebFinale2","VigneEntDebFinale2"),
+  Mais = c("MaisSemenDebFinale2", "MaisSemisDebFinale2", "MaisPestDebFinale2","MaisRecDebFinale2"),
+  Blé = c("BleSemenDebFinale2", "BleSemisDebFinale2", "BlePestDebFinale2","BleRecDebFinale2"),
+  Pois = c("PoisSemenDebFinale2", "PoisSemisDebFinale2", "PoisPestDebFinale2","PoisRecDebFinale2"),
+  Betteraves = c("BetSemenDebFinale2", "BetSemisDebFinale2", "BetPestDebFinale2","BetRecDebFinale2"),
+  Tournesol = c("TouSemenDebFinale2", "TouSemisDebFinale2", "TouPestDebFinale2","TouRecDebFinale2"),
+  Colza = c("ColSemenDebFinale2", "ColSemisDebFinale2", "ColPestDebFinale2","ColRecDebFinale2"),
+  Tabac = c("TabacSemisDebFinale2", "TabacPestDebFinale2","TabacRecDebFinale2"),
+  Arboriculture = c("ArbTailleDebFinale2", "ArbPestDebFinale2","ArbRecDebFinale2")
+)
+
+# Calculer la durée de chaque tâche (différence entre dates de début et de fin)
+for (tache in unlist(taches_agricoles)) {
+  fin_tache <- gsub("DebFinale2", "FinFinale2", tache)  # Trouver la colonne de fin correspondante
+  data[[paste0("duree_", tache)]] <- data[[fin_tache]] - data[[tache]]  # Calcul de la durée
+}
+
+# Calculer le pourcentage de chaque tâche
+for (tache in unlist(taches_agricoles)) {
+  # Calculer la durée de la tâche
+  fin_tache <- gsub("DebFinale2", "FinFinale2", tache)
+  duree_tache <- data[[fin_tache]] - data[[tache]]
+  
+  # Calculer le pourcentage
+  data[[paste0("pourcentage_", tache)]] <- 
+    ifelse(data$duree_tot > 0, 
+           (duree_tache / data$duree_tot) * 100, 
+           NA)
+}
+
+# Créer ratio2
+ratio2 <- data %>%
+  select(id, starts_with("pourcentage_"))
+
+# Ajuster les noms de colonnes
+colnames(ratio2) <- gsub("pourcentage_", "ratio_", colnames(ratio2))
+colnames(ratio2) <- gsub("DebFinale2", "", colnames(ratio2))
+
+# Aperçu des résultats
+head(ratio2)
+
+
+
 ################################################################################
 #                         Tableau des valeurs propres                          #
 ################################################################################
@@ -335,9 +384,9 @@ top_3_freq <- top_8_cult_table %>%
 culture_matrix_html <- top_8_cult_table %>% 
   mutate(
     Fréquence = cell_spec(Fréquence, "html", 
-                         color = ifelse(Fréquence %in% top_3_freq, "white", "black"),  # Blanc si top 4, sinon noir
-                         background = ifelse(Fréquence %in% top_3_freq, "red", "white"),  # Rouge si top 4, sinon blanc
-                         align = "center")
+                          color = ifelse(Fréquence %in% top_3_freq, "white", "black"),  # Blanc si top 4, sinon noir
+                          background = ifelse(Fréquence %in% top_3_freq, "red", "white"),  # Rouge si top 4, sinon blanc
+                          align = "center")
   )
 
 
