@@ -517,7 +517,7 @@ Les individus entament leur carrière autour de **19,85 ans**. La proportion de 
 **Cluster 6 :**  
 Ce groupe présente le début de carrière le plus tardif, la **plus forte proportion de fumeurs** et une consommation moyenne de **16 paquets** par an, bien que sa durée d’activité soit la **plus courte**.
 
-Ces observations mettent en lumière des profils distincts : certains groupes présentent une exposition plus marquée au tabagisme, tandis que d’autres affichent des caractéristiques propres à un début de carrière plus précoce ou tardif. Ces résultats offrent des pistes concrètes pour adapter les politiques de prévention aux spécificités de chaque cluster.
+Ces observations mettent en lumière des profils distincts : certains groupes présentent une exposition plus marquée au tabagisme, tandis que d’autres affichent des caractéristiques propres à un début de carrière plus précoce ou tardif. Ces résultats offrent des pistes concrètes pour adapter les politiques de prévention aux spécificités de chaque cluster (cf.[Description des clusteurs](#des-clust)).
 
 
 
