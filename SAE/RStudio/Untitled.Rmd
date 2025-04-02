@@ -48,6 +48,7 @@ data = readRDS("../Data/data1975Agrican")
 L’agriculture est un secteur clé de l’économie, mais il expose les travailleurs à divers risques professionnels, notamment des expositions prolongées aux pesticides, aux poussières et aux agents biologiques. Ces expositions sont suspectées d’augmenter le risque de certains cancers, rendant essentielle l’étude des liens entre agriculture et santé. Les métiers agricoles sont variés, allant des grandes cultures à l’élevage, avec des niveaux d’exposition différenciés selon les pratiques et les produits utilisés.
 À l’aide de méthodes factorielles, notamment l’Analyse en Composantes Principales (ACP), nous identifions les corrélations entre pratiques agricoles et expositions. Ensuite, le clustering par la méthode des K-means permet de regrouper les individus en profils homogènes, facilitant l’analyse des risques sanitaires spécifiques à chaque groupe.
 
+---
 
 ## **Description population**
 
@@ -174,6 +175,8 @@ colnames(ratios) <- c(
 )
 ```
 
+---
+
 ## **Exploration des données - Analyse en Composantes Principales**
 
 Pour commencer, nous avons décidé de réaliser une Analyse en Composantes Principales (ACP) sur les 8 cultures et les 5 types d’élevages les plus représentés dans notre jeu de données.
@@ -201,6 +204,7 @@ Les 5 types d’élevages retenus sont :
 
 Cette analyse nous permettra d’identifier les principales tendances et similitudes entre ces cultures et élevages, facilitant ainsi l’interprétation des données.  
 
+---
 
 ### **Sélection des Axes**
 
@@ -239,6 +243,9 @@ df %>%
 
 
 ```
+
+---
+
 ### **Analyse du Nuage des Variables**
 
 
@@ -292,7 +299,7 @@ inertie_cum = res.pca$eig
 
 ```
 
-
+---
 
 ### **Analyse des Corrélations et Identification des Axes Principaux**
 
@@ -337,6 +344,8 @@ cor_matrix_html %>%
   kbl(escape = FALSE, align = "c") %>%
   kable_styling(full_width = FALSE, font_size = 14)
 ```
+
+---
 
 ## **Classification automatique - K-means**
 
@@ -386,6 +395,7 @@ clust_data <- res.pca$ind$coord[, 1:8]
 
 ```
 
+---
 
 ### **Sélection des clusters les plus représentatifs**
 
@@ -499,7 +509,7 @@ culture_matrix_html %>%
   kable_styling(full_width = FALSE, font_size = 14)
 ```
 
-
+---
 
 ### **Analyse des quatre clusters les plus représentés**
 
@@ -580,21 +590,93 @@ tableau_synthese_html %>%
   kbl(escape = FALSE, align = "c") %>%
   kable_styling(full_width = FALSE, font_size = 14)
 ```
-### **Analyse Rasmata**
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur quis dolor nec urna malesuada tincidunt. Praesent fringilla convallis velit, ut fermentum enim varius a. Sed in risus nec lorem vulputate mollis. Nullam auctor nisi sed dolor consectetur, at facilisis magna malesuada.
+---
 
-Suspendisse potenti. Integer dapibus, lorem ac interdum dignissim, erat nisl malesuada nisl, at pellentesque metus nisi et arcu. Fusce ut ipsum ut turpis volutpat tristique in in risus. Morbi nec tortor ac
+### **Analyse des Clusters Agricoles**
+
+#### **Cluster 1 : Grandes Cultures Céréalières et Oléagineuses**  
+
+Ce cluster se distingue par des V-tests très élevés (>10) pour plusieurs cultures.  
+
+- **Surreprésentés** :
+  - Tournesol (0.678, V-test=77.391)  
+  - Colza (0.515, V-test=55.533)  
+  - Blé/orge (0.922, V-test=30.598)  
+  - Maïs (0.887, V-test=23.014)  
+  - Volailles (0.076, V-test=15.066)  
+  - Pois fourragers (0.159, V-test=13.814)  
+  - Moutons/chèvres (0.037, V-test=10.270)  
+  
+- **Sous-représentés** :
+  - Vignes (0.147, V-test=-11.395)  
+
+Ce cluster représente des exploitations spécialisées dans les grandes cultures céréalières et oléagineuses.
+
+#### **Cluster 2 : Élevage Bovin avec Polyculture**  
+
+- **Surreprésentés** :
+  - Prairies (0.891, V-test=62.759)  
+  - Bovins (0.879, V-test=60.507)  
+  - Blé/orge (0.67, V-test=33.810)  
+  - Maïs (0.677, V-test=30.247)  
+- **Sous-représentés** :  
+  - Tournesol (0.028, V-test=-18.369)  
+  - Colza (0.023, V-test=-19.992)  
+  - Pois fourragers (0.01, V-test=-19.337)  
+  - Betteraves (0.031, V-test=-16.689)  
+  - Vignes (0.107, V-test=-35.422)  
+
+Ce cluster correspond à un système d'élevage bovin avec prairies et cultures céréalières complémentaires.
+
+#### **Cluster 5 : Cultures Industrielles et Grandes Cultures**  
+
+- **Surreprésentés** :  
+  - Betteraves (0.832, V-test=80.055)  
+  - Pois fourragers (0.506, V-test=57.453)  
+  - Blé/orge (0.928, V-test=27.936)  
+  - Colza (0.258, V-test=20.090)  
+  - Élevage porcin (0.064, V-test=15.688)  
+- **Sous-représentés** :  
+  - Vignes (0.057, V-test=-15.864)  
+
+Ce cluster est principalement orienté vers les cultures industrielles et les grandes cultures.
+
+#### **Cluster 6 : Viticulture Spécialisée**  
+
+- **Surreprésentés** :  
+  - Vignes (0.615, V-test=51.546)  
+- **Sous-représentés** :  
+  - Tournesol (0.006, V-test=-24.824)  
+  - Colza (0.004, V-test=-25.438)  
+  - Blé/orge (0.055, V-test=-68.561)  
+  - Maïs (0.066, V-test=-48.166)  
+  - Volailles (0.008, V-test=-10.862)  
+  - Pois fourragers (0.002, V-test=-21.554)  
+  - Prairies (0.074, V-test=-71.576)  
+  - Bovins (0.132, V-test=-64.021)  
+  - Betteraves (0.007, V-test=-23.373)  
+
+Ce cluster est clairement spécialisé dans la viticulture.
+
+#### **Synthèse Comparative**  
+
+L’analyse des quatre clusters les plus représentatifs met en évidence des systèmes agricoles distincts en fonction des cultures et élevages dominants.  
+Ces valeurs, statistiquement très significatives (V-test > 10 en valeur absolue), montrent quatre systèmes agricoles bien définis :
+
+1. **Grandes cultures céréalières et oléagineuses (C1)**
+2. **Élevage bovin avec polyculture (C2)**
+3. **Cultures industrielles et grandes cultures (C5)**
+4. **Viticulture spécialisée (C6)**  
 
 
 <div style="text-align: center;">
   
-#### Table Rasmata {#des-tbl_rasmata}  
+#### Tableau des résultats
 
 </div>
 
 ```{r des-tbl_rasmata, results='asis', echo=FALSE, warning=FALSE}
-
 km_res_df <- data.frame(ID = names(km.res$cluster), cluster = km.res$cluster)
 
 merged_df <- merge(ratios, km_res_df, by.x = 0, by.y = "ID")
@@ -672,7 +754,7 @@ for (i in 1:length(moy_cols)) {
   moy_col <- moy_cols[i]
   vtest_col <- vtest_cols[i]
   
-
+  
   for (row in 1:nrow(formatted_df)) {
     if (!is.na(formatted_df[row, vtest_col]) && 
         is.numeric(formatted_df[row, vtest_col]) && 
@@ -691,5 +773,11 @@ for (i in 1:length(moy_cols)) {
 # Table HTML
 kbl(formatted_df, escape = FALSE, align = "c") %>%
   kable_styling(full_width = FALSE, font_size = 14)
-
 ```
+
+## **Conclusion**
+
+Cette analyse des pratiques agricoles au sein de la cohorte AGRICAN met en lumière la diversité des systèmes agricoles et de leurs impacts potentiels sur la santé des travailleurs. Grâce à des méthodes statistiques avancées, telles que l’Analyse en Composantes Principales (ACP) et le clustering par K-means, nous avons pu identifier des profils homogènes d'agriculteurs, facilitant ainsi la compréhension des liens entre pratiques agricoles et risques sanitaires.
+
+L’analyse des clusters révèle des différences importantes dans les pratiques agricoles, l’âge de début de carrière, la durée de l’activité et la consommation de tabac, avec des implications pour la prévention des risques de santé. Par exemple, les agriculteurs du Cluster 2, qui commencent leur carrière plus tôt et fument moins, pourraient bénéficier de stratégies de prévention adaptées aux jeunes travailleurs. En revanche, ceux du Cluster 5, exposés davantage aux produits chimiques et ayant un tabagisme plus élevé, pourraient nécessiter des mesures de prévention plus spécifiques.
+
