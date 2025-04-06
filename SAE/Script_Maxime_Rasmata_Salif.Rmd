@@ -1,0 +1,793 @@
+---
+title: "Analyse des données AGRICAN"
+author: "GAMONDELE Maxime - SAMAKE Salif - SAWADOGO Rasmata"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+```{r Chargement_des_Librairies, message=FALSE, warning=FALSE, echo=FALSE}
+# Chargement des Librairies
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(forcats)
+library(GGally)
+library(patchwork)
+library(ggAVplots)
+library(cowplot)
+library(car)
+library(xtable)
+library(rsq)
+library(FactoMineR)
+library(factoextra)
+library(magrittr)
+library(kableExtra)
+library(knitr)
+library(gt)
+```
+
+
+```{r Importation_des_donnees, message=FALSE, warning=FALSE, echo=FALSE}
+################################################################################
+# --------------------------  Importation des données  ----------------------- #
+################################################################################
+data = readRDS("../Data/data1975Agrican")
+```
+
+
+## **Introduction**
+
+L’agriculture est un secteur clé de l’économie, mais il expose les travailleurs à divers risques professionnels, notamment des expositions prolongées aux pesticides, aux poussières et aux agents biologiques. Ces expositions sont suspectées d’augmenter le risque de certains cancers, rendant essentielle l’étude des liens entre agriculture et santé. Les métiers agricoles sont variés, allant des grandes cultures à l’élevage, avec des niveaux d’exposition différenciés selon les pratiques et les produits utilisés.
+À l’aide de méthodes factorielles, notamment l’Analyse en Composantes Principales (ACP), nous identifions les corrélations entre pratiques agricoles et expositions. Ensuite, le clustering par la méthode des K-means permet de regrouper les individus en profils homogènes, facilitant l’analyse des risques sanitaires spécifiques à chaque groupe.
+
+---
+
+## **Description population**
+
+
+L’étude s’appuie sur la cohorte [**AGRICAN**](https://www.agrican.fr), qui vise à évaluer l’impact des expositions professionnelles agricoles sur le risque de développer un cancer. Cette cohorte comprend environ 180 000 affiliés à la Mutualité Sociale Agricole (MSA) ayant accepté de participer à l’étude, parmi les 567 000 personnes initialement éligibles. Elle regroupe des agriculteurs, des exploitants et des salariés, ainsi que des travailleurs de secteurs liés à l’agriculture. Tous étaient affiliés à la MSA depuis au moins trois ans et résidaient dans l’un des 11 départements français disposant d’un registre des cancers.
+
+Notre étude se concentre sur la Cohorte 1975, qui rassemble 10 463 agriculteurs ayant débuté leur carrière entre 1965 et 1985. À travers un questionnaire, ils ont fourni des informations détaillées sur leur parcours professionnel, incluant leur type d’exploitation (élevage et/ou culture), l’utilisation de produits phytosanitaires (fongicides, insecticides, herbicides), le matériel employé, ainsi que des éléments sur leur santé et leur mode de vie.
+
+Afin d’explorer ces données plus en profondeur, nous avons appliqué une Analyse en Composantes Principales (ACP) sur un tableau regroupant des ratios d’activité. Le ratio de pratique de l’activité mesure l’intensité d’une tâche en rapportant sa durée de pratique à la durée totale de l’activité professionnelle.
+
+
+```{r Preparation_des_donnees, message=FALSE, warning=FALSE, echo=FALSE}
+################################################################################
+# --------------------------  Préparation des données  ----------------------- #
+################################################################################
+
+
+
+data$date_deb_tot <- apply(
+  data[, c("BovDeb2", "MouDeb2", "CocDeb2", "CheDeb2", "VolDeb2",
+           "PraiDeb2", "VigneDeb2", "MaisFin2", "BleDeb2", "PoisDeb2", 
+           "BetDeb2", "TouDeb2", "ColDeb2", "TabacDeb2", "ArbDeb2",
+           "PdTDeb2", "LegChampDeb2", "SerresDeb2")], 
+  1, 
+  function(x) {
+    x <- x[x > 0]  # Exclure les 0
+    if (length(x) == 0) return(NA)  # Si toutes les valeurs sont 0 ou NA, on retourne NA
+    min(x, na.rm = TRUE)  # Calcul du min sans 0
+  }
+)
+
+
+data$date_fin_tot = apply(data[, c("BovFin2", "MouFin2", "CocFin2", "CheFin2", "VolFin2",
+                                   "PraiFin2","VigneFin2", "MaisFin2", "BleFin2", "PoisFin2", 
+                                   "BetFin2", "TouFin2", "ColFin2", "TabacFin2", "ArbFin2",
+                                   "PdTFin2", "LegChampFin2", "SerresFin2")], 
+                          1,
+                          max,
+                          na.rm = TRUE)  
+
+data$duree_tot = data$date_fin_tot - data$date_deb_tot
+
+
+
+# Liste des noms des variables de début (Deb2)
+deb_cols <- c("BovDeb2", "MouDeb2", "CocDeb2", "CheDeb2", "VolDeb2",
+              "PraiDeb2", "VigneDeb2", "MaisDeb2", "BleDeb2", "PoisDeb2", 
+              "BetDeb2", "TouDeb2", "ColDeb2", "TabacDeb2", "ArbDeb2",
+              "PdTDeb2", "LegChampDeb2", "SerresDeb2")
+
+# Générer les noms des colonnes Fin2 en remplaçant "Deb2" par "Fin2"
+fin_cols <- gsub("Deb2", "Fin2", deb_cols)
+
+
+# Calcul de la durée pour chaque variable et création des nouvelles colonnes
+for (i in seq_along(deb_cols)) {
+  duree_col <- paste0("duree_", gsub("Deb2", "", deb_cols[i]))  # Nom de la nouvelle colonne
+  data[[duree_col]] <- data[[fin_cols[i]]] - data[[deb_cols[i]]]  # Calcul de la durée
+}
+
+
+
+
+
+# Trouver toutes les colonnes de durée générées précédemment
+duree_cols <- grep("^duree_", colnames(data), value = TRUE)
+
+# Boucle pour créer les colonnes de ratio
+for (duree_col in duree_cols) {
+  ratio_col <- gsub("duree_", "ratio_", duree_col)  # Créer le nom du ratio
+  
+  # Calcul du ratio : durée individuelle / durée totale
+  data[[ratio_col]] <- ifelse(data$duree_tot > 0, data[[duree_col]] / data$duree_tot, NA)
+}
+
+data <- subset(data, select = -ratio_tot)
+
+
+# Trouver toutes les colonnes de ratio générées précédemment
+ratio_cols <- grep("^ratio_", colnames(data), value = TRUE)
+
+# Créer une nouvelle table contenant uniquement les ratios
+table_ratio <- data[, c("id", ratio_cols), drop = FALSE]
+
+#str(data)
+
+
+# Trouver toutes les colonnes qui commencent par "Cult"
+cult_cols <- grep("^Cult", colnames(data), value = TRUE)
+
+# Calculer la fréquence d'apparition des valeurs non nulles pour chaque colonne "Cult"
+cult_frequencies <- colSums(data[, cult_cols] != 0, na.rm = TRUE)
+
+# Trier les colonnes par fréquence décroissante et garder les 8 premières
+top_8_cult <- names(sort(cult_frequencies, decreasing = TRUE))[1:8]
+elevage  <- grep("^El", colnames(data), value = TRUE)
+
+# Renommer top_8_cult
+top_8_cult <- gsub("^Cult(.*)Fin3$", "ratio_\\1", top_8_cult)
+# Renommer elevage
+elevage <- gsub("^El(.*)Fin3$", "ratio_\\1", elevage)
+
+cols_to_keep <- c("id", top_8_cult, elevage)
+ratios <- table_ratio[, cols_to_keep]
+
+rownames(ratios) <- ratios$id
+ratios <- ratios[, -1]
+
+# Renommer les colonnes
+colnames(ratios) <- c(
+  "Prairies",          # ratio_Prai -> Prairies
+  "Blé ou orge",       # ratio_Ble -> Blé ou orge
+  "Mais",              # ratio_Mais -> Mais
+  "Vignes",            # ratio_Vigne -> Vignes
+  "Colza",             # ratio_Col -> Colza
+  "Tournesol",         # ratio_Tou -> Tournesol
+  "Bettraves",         # ratio_Bet -> Bettraves
+  "Pois fourragers",   # ratio_Pois -> Pois fourragers
+  "Bovins",            # ratio_Bov -> Bovins
+  "Moutons/Chèvres",   # ratio_Mou -> Moutons/chèvres
+  "Cochons",           # ratio_Coc -> Cochons
+  "Chevaux",           # ratio_Che -> Chevaux
+  "Volailles"          # ratio_Vol -> Volailles
+)
+```
+
+---
+
+## **Exploration des données - Analyse en Composantes Principales**
+
+Pour commencer, nous avons décidé de réaliser une Analyse en Composantes Principales (ACP) sur les 8 cultures et les 5 types d’élevages les plus représentés dans notre jeu de données.
+
+#### Cultures les plus représentées  
+Les 8 cultures sélectionnées sont :  
+- Prairies  
+- Blé ou orge  
+- Maïs  
+- Vignes  
+- Colza  
+- Tournesol  
+- Betteraves  
+- Pois fourragers  
+
+#### Élevages les plus représentés  
+Les 5 types d’élevages retenus sont :  
+- Bovins  
+- Moutons/Chèvres  
+- Cochons  
+- Chevaux  
+- Volailles
+
+
+
+Cette analyse nous permettra d’identifier les principales tendances et similitudes entre ces cultures et élevages, facilitant ainsi l’interprétation des données.  
+
+---
+
+### **Sélection des Axes**
+
+Pour choisir nos axes, nous avons cherché à conserver **80 % de l’inertie cumulée**. Comme le montre le [tableau ci-dessous](#tableau-valeurs-propres), nous atteignons cet objectif en conservant nos **8 premières composantes principales**.  
+
+<div style="text-align: center;">
+  
+#### Tableau des valeurs propres {#tableau-valeurs-propres}  
+
+</div>
+
+```{r tableau_des_val_propres, results='asis',warning=FALSE,echo=FALSE}
+
+# -----------------------------------------------------------------------------#
+# ------------------------- Tableau des valeurs propres -----------------------#
+# -----------------------------------------------------------------------------#
+res.pca = PCA(ratios, scale.unit = TRUE, graph = FALSE)
+
+df <- res.pca$eig %>%
+  as.data.frame() %>%
+  select(-1) %>%  # Suppression de la première colonne (Eigen values)
+  setNames(c("% d'inertie", "% d'inertie cumulé")) %>%
+  mutate(
+    `% d'inertie` = round(as.numeric(`% d'inertie`), 2),  # Arrondi à 2 décimales
+    `% d'inertie cumulé` = round(as.numeric(`% d'inertie cumulé`), 2)  # Arrondi à 2 décimales
+  )
+
+# Sélectionner les lignes à surligner (comp 1 à comp 8)
+color.me <- 8  # Indices des lignes à colorer
+
+# Générer le tableau avec kableExtra
+df %>%
+  kbl(escape = FALSE, align = "c") %>%
+  kable_styling(full_width = FALSE, font_size = 14) %>%
+  row_spec(color.me, bold = TRUE, color = "white", background = "sandybrown")
+
+
+```
+
+---
+
+### **Analyse du Nuage des Variables**
+
+
+Après avoir identifiés nos 8 composantes principales, nous réalisons la représentation du [nuages des variables](#nuages-des-variables) avec les deux premières composantes principales (CP1 et CP2).
+
+Sur ce dernier, on peut observer que les variables **"Blé ou Orge"**, **"Maïs"**, **"Prairies"** et **"Bovins"** sont corrélées positivement avec le premier axe.  
+
+La variable **"Vignes"** est, quant à elle, corrélée négativement avec ce dernier.  
+
+Les variables **"Pois Fourragers"** et **"Colza"** sont corrélées positivement avec le second axe.  
+
+Toutes ces variables évoquées sont globalement bien représentées sur le plan factoriel.
+
+En revanche, les autres variables sont mal représentées dans ce plan, notamment "Cochons", "Volailles" et "Chevaux". Par conséquent, elles ne seront pas pertinentes pour notre analyse.
+
+<div style="text-align: center;">
+#### Nuages des variables {#nuages-des-variables}  
+</div>
+
+```{r Analyse_en_Composante_Principale,message=FALSE, warning=FALSE, echo=FALSE,fig.align="center"}
+################################################################################
+# -------------------------  Analyse en Composante Principale ---------------- #
+################################################################################
+
+res.pca = PCA(ratios, scale.unit = TRUE, graph = FALSE,ncp = 8)
+# Extraire le pourcentage d'inertie cumulée
+
+fviz_pca_var(res.pca, 
+             col.var = "springgreen4",       
+             alpha.var = 1,             
+             repel = TRUE,                
+             ggtheme = theme_minimal()) + 
+  theme(
+    text = element_text(size = 10),       
+    plot.title = element_text(face = "bold", hjust = 0.5), 
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    legend.position = "bottom"           
+  ) + 
+  scale_x_continuous(breaks = NULL) +
+  scale_y_continuous(breaks = NULL) +
+  labs(title = "Nuage des Variables - Analyse en Composantes Principales")
+
+inertie_cum = res.pca$eig
+# En utilisant le critère de 80% de l'inertie restituée, on serait amener à séléctionner les 8 premières composantes.
+# Nous allons si après détaillé les 4 premières composantes principales :
+
+#res.pca$var
+
+```
+
+---
+
+### **Analyse des Corrélations et Identification des Axes Principaux**
+
+Pour obtenir une vue d'ensemble plus globale, nous nous sommes appuyés sur la [matrice des corrélations](#mat-corr) et avons choisi de nous concentrer sur les quatre premiers axes.  
+
+Dans ce tableau, les variables mises en évidence en **rouge** sont celles qui présentent la plus forte corrélation (> 60 %) avec leur axe respectif. Celles en **orange** sont corrélées à au moins 40 %, et celles en **jaune** à au moins 20 %.  
+
+- Concernant le **premier axe**, la variable **"Blé ou Orge"** est la mieux représentée, avec un coefficient de corrélation de **0,83**, indiquant une très forte association.  
+
+- Pour le **deuxième axe**, c'est la variable **"Pois Fourragers"** qui est la plus corrélée, avec un coefficient de **0,65**.  
+
+- En ce qui concerne le **troisième axe factoriel**, la variable la mieux représentée est **"Chevaux"**, avec un coefficient de **0,48**.  
+
+- Enfin, pour le **quatrième axe**, la variable la plus corrélée est **"Betterave"**, avec un coefficient de **-0,52**.  
+
+
+<div style="text-align: center;">
+#### Matrice des corélation entre les variables et les composantes principales {#mat-corr}
+</div>
+
+```{r mat_corr_var_CP, results='asis', echo=FALSE}
+# -----------------------------------------------------------------------------#
+# - Matrice des corélation entre les variables et les composantes principales -#
+# -----------------------------------------------------------------------------#
+
+cor_matrix <- as.data.frame(round(res.pca$var$cor[, 1:4], 2))
+
+# Appliquer le surlignage colonne par colonne
+cor_matrix_html <- cor_matrix %>%
+  mutate(across(everything(), ~ cell_spec(.x, "html",
+                                          color = ifelse(abs(.x) > 0.6, "white", 
+                                                         ifelse(abs(.x) > 0.4, "white",   
+                                                                ifelse(abs(.x) > 0.2, "black", "black"))),
+                                          background = ifelse(abs(.x) > 0.6, "red",
+                                                              ifelse(abs(.x) > 0.4, "orange",
+                                                                     ifelse(abs(.x) > 0.2, "yellow", "transparent"))),
+                                          align = "center")))
+
+
+# Générer le tableau HTML avec kableExtra
+cor_matrix_html %>%
+  kbl(escape = FALSE, align = "c") %>%
+  kable_styling(full_width = FALSE, font_size = 14)
+```
+
+---
+
+## **Classification automatique - K-means**
+
+```{r Classification_Automatique, message=FALSE, warning=FALSE, echo=FALSE}
+################################################################################
+# -------------------------   Classiffication automatique  ------------------- #
+#                               A l'aide des K-Means                           #
+################################################################################
+
+
+
+```
+
+
+Après avoir réalisé l'ACP, nous cherchons à constituer des classes d'individues afin de comprendre leur caractéristique principales. Pour ce faire nous allons utiliser les k-means. Les k-means sont un algorithme de classification non supervisée qui partitionne un ensemble de données en k groupes en minimisant la variance intra-cluster.
+
+### **Détermination du nombre optimal de clusters**
+
+Pour déterminer le nombre optimal de clusters, nous avons utilisé la **méthode du coude**. Cette technique consiste à tracer la courbe de l'inertie intra-cluster en fonction du nombre de clusters (k). Le point où la diminution de l'inertie ralentit brusquement correspond généralement au nombre optimal de clusters.
+
+Sur notre [graphique](#coude) , une cassure est observable à partir de **huit clusters**. Nous retenons donc **huit** comme nombre optimal de clusters, car au-delà de ce seuil, la réduction de l'inertie devient moins significative.
+
+
+
+
+<div style="text-align: center;">
+  
+#### Variance intra-classe {#coude}  
+
+</div>
+
+
+```{r fig.width=6, fig.height=6, fig.align='center',echo=FALSE}
+# -----------------------------------------------------------------------------#
+# ------------------------- Coude pour le nombre de cluster -------------------#
+# -----------------------------------------------------------------------------#
+
+fviz_nbclust(res.pca$var$coord,
+             hcut,
+             k.max = 12,
+             method = "wss") +
+  geom_vline(xintercept = 8,
+             linetype = "dashed",
+             color = "red")
+
+clust_data <- res.pca$ind$coord[, 1:8]
+
+```
+
+---
+
+### **Sélection des clusters les plus représentatifs**
+
+En choisissant **huit clusters**, nous observons une répartition inégale des effectifs. Pour notre étude, nous nous concentrerons uniquement sur les **quatre clusters les plus représentés** :  
+
+- **Cluster 1** : 857 individus  
+- **Cluster 2** : 3 497 individus  
+- **Cluster 5** : 710 individus  
+- **Cluster 6** : 3 405 individus  
+
+Cette sélection permet d’analyser les groupes ayant le plus d’impact tout en évitant ceux dont l’effectif est trop faible pour être significatif.
+
+<div style="text-align: center;">
+  
+#### Tableau des effectifs par cluster {#coude}  
+
+</div>
+
+```{r tableau_eff_cluster, results='asis', echo=FALSE}
+# -----------------------------------------------------------------------------#
+# -----------------------  Tableau des effectifs par cluster ------------------#
+# -----------------------------------------------------------------------------#
+
+set.seed(123)
+# 1. Appliquer K-Means
+km.res <- kmeans(clust_data, centers = 8,nstart = 50)
+
+
+# 2. Créer un tableau des fréquences des clusters
+cluster_counts <- as.data.frame(table(km.res$cluster))
+colnames(cluster_counts) <- c("Cluster", "Effectif")  # Renommer les colonnes
+
+# 3. Calculer les moyennes des variables par cluster
+cluster_means <- aggregate(clust_data, by = list(cluster = km.res$cluster), FUN = mean)
+
+top_4_effectifs <- cluster_counts %>% 
+  arrange(desc(Effectif)) %>% 
+  head(4) %>% 
+  pull(Effectif)
+
+# Appliquer la mise en forme pour les 4 plus grands Effectif
+cluster_counts_html <- cluster_counts %>% 
+  mutate(
+    Effectif = cell_spec(Effectif, "html", 
+                         color = ifelse(Effectif %in% top_4_effectifs, "white", "black"),  # Blanc si top 4, sinon noir
+                         background = ifelse(Effectif %in% top_4_effectifs, "red", "transparent"),  # Rouge si top 4, sinon blanc
+                         align = "center")
+  )
+
+# Générer le tableau HTML avec kableExtra
+cluster_counts_html %>%
+  kbl(escape = FALSE, align = "c") %>%
+  kable_styling(full_width = FALSE, font_size = 14)
+
+```
+<div style="text-align: center;">
+  
+#### Tableau des cultures les plus fréquentes {#cultures-freq}  
+
+</div>
+
+```{r tableau_cult_plus_freq, results='asis', echo=FALSE}
+# -----------------------------------------------------------------------------#
+# -------------------- Tableau des cultures les plus fréquentes ---------------#
+# -----------------------------------------------------------------------------#
+
+# Extraire les 8 cultures les plus fréquentes
+cult_frequencies <- colSums(data[, cult_cols] != 0, na.rm = TRUE)
+
+# Trier les cultures par ordre décroissant de fréquence et sélectionner les 8 premières
+top_8_cult <- names(sort(cult_frequencies, decreasing = TRUE))[1:8]
+
+# Créer un tableau avec les fréquences des 8 cultures les plus fréquentes
+top_8_cult_table <- data.frame(
+  Culture = top_8_cult,
+  Fréquence = cult_frequencies[top_8_cult]
+)
+
+top_8_cult_table %>% 
+  select(-Culture)->top_8_cult_table
+
+rownames(top_8_cult_table) <- c(
+  "Prairies",
+  "Blé ou orge",
+  "Maïs",
+  "Vigne",
+  "Colza",
+  "Tournesol",
+  "Betteraves",
+  "Pois fourragers"
+)
+
+top_3_freq <- top_8_cult_table %>% 
+  arrange(desc(Fréquence)) %>% 
+  head(3) %>% 
+  pull(Fréquence)
+
+# Appliquer la mise en forme pour les 3 plus grands Effectif
+culture_matrix_html <- top_8_cult_table %>% 
+  mutate(
+    Fréquence = cell_spec(Fréquence, "html", 
+                         color = ifelse(Fréquence %in% top_3_freq, "white", "black"),  # Blanc si top 4, sinon noir
+                         background = ifelse(Fréquence %in% top_3_freq, "red", "transparent"),  # Rouge si top 4, sinon blanc
+                         align = "center")
+  )
+
+
+# Générer le tableau HTML avec kableExtra
+culture_matrix_html %>%
+  kbl(escape = FALSE, align = "c") %>%
+  kable_styling(full_width = FALSE, font_size = 14)
+```
+
+---
+
+### **Analyse des quatre clusters les plus représentés**
+
+Après avoir identifié les **quatre clusters** les plus représentés, nous analysons ces groupes en nous basant sur **cinq variables clés** : l'effectif, l'âge moyen au début de la carrière, la proportion de fumeurs, le nombre moyen de paquets consommés annuellement et la durée moyenne d’activité. Ces indicateurs révèlent des différences notables en termes d’**âge d’entrée en activité**, de **tabagisme** et de **stabilité professionnelle**.
+
+**Cluster 1 :**  
+Les individus commencent en moyenne leur carrière à **20 ans**. La majorité ne fume pas (moins d’un sur deux), et parmi les fumeurs, la consommation atteint environ **14 paquets** par an. Ce groupe a également de la **durée d’activité la plus longue**.
+
+**Cluster 2 :**  
+Ce cluster se caractérise par un début de carrière très précoce (**19 ans en moyenne**) et la **plus faible proportion de fumeurs**, dont la consommation est d’environ **12 paquets** par an. La durée d’activité y est élevée, avoisinant les **28 ans** en moyenne.
+
+**Cluster 5 :**  
+Les individus entament leur carrière autour de **19,85 ans**. La proportion de fumeurs est importante (**51,83 %**), avec une consommation d’environ **15,6 paquets** par an.
+
+**Cluster 6 :**  
+Ce groupe présente le début de carrière le plus tardif, la **plus forte proportion de fumeurs** et une consommation moyenne de **16 paquets** par an, bien que sa durée d’activité soit la **plus courte**.
+
+Ces observations mettent en lumière des profils distincts : certains groupes présentent une exposition plus marquée au tabagisme, tandis que d’autres affichent des caractéristiques propres à un début de carrière plus précoce ou tardif. Ces résultats offrent des pistes concrètes pour adapter les politiques de prévention aux spécificités de chaque cluster (cf.[Description des clusteurs](#des-clust)).
+
+
+
+
+<div style="text-align: center;">
+  
+#### Description des clusteurs {#des-clust}  
+
+</div>
+
+```{r des-clust, results='asis', echo=FALSE, warning=FALSE}
+
+# Ajouter les clusters aux données
+data$Cluster <- as.factor(km.res$cluster)
+
+# Renommer les clusters avec des étiquettes "Cluster1", "Cluster2", etc.
+levels(data$Cluster) <- paste0("Cluster", 1:length(levels(data$Cluster)))
+
+# Compter les effectifs par cluster et sélectionner les 4 plus grands
+top_clusters <- names(sort(table(data$Cluster), decreasing = TRUE)[1:4])
+
+# Filtrer les données pour ne garder que les 4 clusters dominants
+data_filtered <- data %>% filter(Cluster %in% top_clusters)
+
+# Création du tableau de synthèse avec les pourcentages des fumeurs et non-fumeurs
+tableau_synthese <- data_filtered %>%
+  group_by(Cluster) %>%
+  summarise(
+    "Effectif" = n(),
+    "Âge moyen au début de la carrière (écart-type)" = paste0(round(mean(date_deb_tot - A_Nais, na.rm = TRUE), 2), 
+                                                              " (", round(sd(date_deb_tot - A_Nais, na.rm = TRUE), 2), ")"),
+    "Proportion de fumeurs" = round((sum(TabagismeF == 1, na.rm = TRUE) / n()) * 100, 2),
+    "Nombre moyen de paquets de tabac consommés annuellement" = round(mean(NbPaquetAnneeF, na.rm = TRUE), 2),
+    
+    "Durée moyenne d'activité (écart-type)" = paste0(round(mean(duree_tot, na.rm = TRUE), 2), 
+                                                     " (", round(sd(duree_tot, na.rm = TRUE), 2), ")")
+  ) %>%
+  mutate(across(everything(), as.character)) %>%  # Convertir toutes les colonnes en caractères
+  pivot_longer(-Cluster, names_to = "Variable", values_to = "Valeur") %>%
+  pivot_wider(names_from = "Cluster", values_from = "Valeur")
+
+tableau_synthese %>% 
+  column_to_rownames(var = "Variable") -> tableau_synthese
+
+
+tableau_synthese_html <- tableau_synthese %>%
+  rownames_to_column(var = "Cluster") %>%
+  rowwise() %>%
+  mutate(across(-Cluster,  # Exclure la colonne des noms
+                ~ ifelse(as.numeric(gsub("\\s*\\(.*\\)", "", .x)) ==  # Extraire la partie numérique
+                           max(as.numeric(gsub("\\s*\\(.*\\)", "", c_across(everything()))), na.rm = TRUE),  
+                         cell_spec(.x, "html", align = "center", bold = TRUE,  
+                                   background = "red", color = "white"),  
+                         cell_spec(.x, "html", align = "center")))) %>%
+  ungroup()  # Sortir du mode rowwise()
+
+
+# Générer le tableau HTML avec kableExtra (sans remettre en rownames)
+tableau_synthese_html %>%
+  kbl(escape = FALSE, align = "c") %>%
+  kable_styling(full_width = FALSE, font_size = 14)
+```
+
+---
+
+### **Analyse des Clusters Agricoles**
+
+#### **Cluster 1 : Grandes Cultures Céréalières et Oléagineuses**  
+
+Ce cluster se distingue par des V-tests très élevés (>10) pour plusieurs cultures.  
+
+- **Surreprésentés** :
+  - Tournesol (0.678, V-test=77.391)  
+  - Colza (0.515, V-test=55.533)  
+  - Blé/orge (0.922, V-test=30.598)  
+  - Maïs (0.887, V-test=23.014)  
+  - Volailles (0.076, V-test=15.066)  
+  - Pois fourragers (0.159, V-test=13.814)  
+  - Moutons/chèvres (0.037, V-test=10.270)  
+  
+- **Sous-représentés** :
+  - Vignes (0.147, V-test=-11.395)  
+
+Ce cluster représente des exploitations spécialisées dans les grandes cultures céréalières et oléagineuses.
+
+#### **Cluster 2 : Élevage Bovin avec Polyculture**  
+
+- **Surreprésentés** :
+  - Prairies (0.891, V-test=62.759)  
+  - Bovins (0.879, V-test=60.507)  
+  - Blé/orge (0.67, V-test=33.810)  
+  - Maïs (0.677, V-test=30.247)  
+- **Sous-représentés** :  
+  - Tournesol (0.028, V-test=-18.369)  
+  - Colza (0.023, V-test=-19.992)  
+  - Pois fourragers (0.01, V-test=-19.337)  
+  - Betteraves (0.031, V-test=-16.689)  
+  - Vignes (0.107, V-test=-35.422)  
+
+Ce cluster correspond à un système d'élevage bovin avec prairies et cultures céréalières complémentaires.
+
+#### **Cluster 5 : Cultures Industrielles et Grandes Cultures**  
+
+- **Surreprésentés** :  
+  - Betteraves (0.832, V-test=80.055)  
+  - Pois fourragers (0.506, V-test=57.453)  
+  - Blé/orge (0.928, V-test=27.936)  
+  - Colza (0.258, V-test=20.090)  
+  - Élevage porcin (0.064, V-test=15.688)  
+- **Sous-représentés** :  
+  - Vignes (0.057, V-test=-15.864)  
+
+Ce cluster est principalement orienté vers les cultures industrielles et les grandes cultures.
+
+#### **Cluster 6 : Viticulture Spécialisée**  
+
+- **Surreprésentés** :  
+  - Vignes (0.615, V-test=51.546)  
+- **Sous-représentés** :  
+  - Tournesol (0.006, V-test=-24.824)  
+  - Colza (0.004, V-test=-25.438)  
+  - Blé/orge (0.055, V-test=-68.561)  
+  - Maïs (0.066, V-test=-48.166)  
+  - Volailles (0.008, V-test=-10.862)  
+  - Pois fourragers (0.002, V-test=-21.554)  
+  - Prairies (0.074, V-test=-71.576)  
+  - Bovins (0.132, V-test=-64.021)  
+  - Betteraves (0.007, V-test=-23.373)  
+
+Ce cluster est clairement spécialisé dans la viticulture.
+
+#### **Synthèse Comparative**  
+
+L’analyse des quatre clusters les plus représentatifs met en évidence des systèmes agricoles distincts en fonction des cultures et élevages dominants.  
+Ces valeurs, statistiquement très significatives (V-test > 10 en valeur absolue), montrent quatre systèmes agricoles bien définis :
+
+1. **Grandes cultures céréalières et oléagineuses (C1)**
+2. **Élevage bovin avec polyculture (C2)**
+3. **Cultures industrielles et grandes cultures (C5)**
+4. **Viticulture spécialisée (C6)**  
+
+
+<div style="text-align: center;">
+  
+#### Tableau des résultats
+
+</div>
+
+```{r des-tbl_rasmata, results='asis', echo=FALSE, warning=FALSE}
+km_res_df <- data.frame(ID = names(km.res$cluster), cluster = km.res$cluster)
+
+merged_df <- merge(ratios, km_res_df, by.x = 0, by.y = "ID")
+names(merged_df)[1] <- "ID"  # Renommer la première colonne en "ID"
+
+cluster_sizes <- table(merged_df$cluster)
+
+top_clusters <- sort(cluster_sizes, decreasing = TRUE)[1:4]
+top_cluster_ids <- as.integer(names(top_clusters))  # Récupérer les IDs des 4 meilleurs clusters
+
+filtered_df <- merged_df[merged_df$cluster %in% top_cluster_ids, ]
+filtered_df$cluster <- as.factor(filtered_df$cluster)  # Convertir "cluster" en facteur
+
+filtered_df <- filtered_df %>%
+  mutate(across(where(is.numeric), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+
+names(filtered_df)[which(names(filtered_df) == "ID")[2]] <- "ID_duplicated"
+
+numeric_cols <- sapply(filtered_df, is.numeric)
+numeric_cols["cluster"] <- FALSE 
+var_names <- names(filtered_df)[numeric_cols]
+
+result_df <- data.frame(Variable = var_names)
+
+for (cl in top_cluster_ids) {
+  cluster_data <- filtered_df[filtered_df$cluster == cl, ]
+  means <- sapply(var_names, function(var) mean(cluster_data[[var]], na.rm = TRUE))
+  col_name <- paste0("Moyenne_C", cl)
+  result_df[[col_name]] <- means
+}
+
+global_means <- sapply(var_names, function(var) mean(merged_df[[var]], na.rm = TRUE))
+result_df$Moyenne_Globale <- global_means  
+
+res.catdes <- catdes(filtered_df, num.var = which(names(filtered_df) == "cluster"),proba = 1)
+
+
+bon_cluster <- as.numeric(names(res.catdes$quanti))
+
+final_df <- data.frame(Variable = rownames(res.catdes$quanti[[bon_cluster[1]]]))
+
+for (cl in bon_cluster) {
+  mean_values <- res.catdes$quanti[[as.character(cl)]][, "Mean in category"]
+  v_test_values <- res.catdes$quanti[[as.character(cl)]][, "v.test"]
+  
+  final_df[[paste0("Moy c", cl)]] <- mean_values[match(final_df$Variable, rownames(res.catdes$quanti[[as.character(cl)]]))]
+  final_df[[paste0("v-test c", cl)]] <- v_test_values[match(final_df$Variable, rownames(res.catdes$quanti[[as.character(cl)]]))]
+}
+
+final_df$Moyenne <- rowMeans(sapply(bon_cluster, function(cl) {
+  res.catdes$quanti[[as.character(cl)]][, "Mean in category"]
+}), na.rm = TRUE)
+
+final_df[,-1] <- round(final_df[,-1], 3)  
+
+ordered_cols <- c("Variable")
+for (cl in bon_cluster) {
+  ordered_cols <- c(ordered_cols, paste0("Moy c", cl), paste0("v-test c", cl))
+}
+
+ordered_cols <- c(ordered_cols, "Moyenne")
+
+final_df <- final_df[, ordered_cols]
+
+vtest_cols <- grep("^v-test", names(final_df))
+for (col in vtest_cols) {
+  final_df[[col]] <- as.numeric(as.character(final_df[[col]]))
+}
+formatted_df <- final_df
+
+moy_cols <- grep("^Moy", names(formatted_df))
+vtest_cols <- grep("^v-test", names(formatted_df))
+
+for (i in 1:length(moy_cols)) {
+  moy_col <- moy_cols[i]
+  vtest_col <- vtest_cols[i]
+  
+  
+  for (row in 1:nrow(formatted_df)) {
+    if (!is.na(formatted_df[row, vtest_col]) && 
+        is.numeric(formatted_df[row, vtest_col]) && 
+        abs(formatted_df[row, vtest_col]) > 10) {
+      formatted_df[row, moy_col] <- cell_spec(
+        formatted_df[row, moy_col], 
+        "html", 
+        color = "white", 
+        background = "red"
+      )
+    }
+  }
+}
+
+
+# Table HTML
+kbl(formatted_df, escape = FALSE, align = "c") %>%
+  kable_styling(full_width = FALSE, font_size = 14)
+```
+
+---
+
+## **Conclusion**
+
+Tout au long de leur activité quotidienne et de leur parcours professionnel, les agriculteurs sont exposés à de nombreux facteurs susceptibles d’affecter leur santé. Ces expositions, multiples et complexes, peuvent être envisagées comme la combinaison d’agents physiques, chimiques, biologiques et comportementaux. Notre étude s’est appuyée sur les données de la cohorte AGRICAN, visant à évaluer l’impact des expositions professionnelles agricoles sur le risque de développer un cancer.
+
+L’analyse de ces données a permis d’identifier des profils distincts d’agriculteurs, apportant une meilleure compréhension des pratiques agricoles, des caractéristiques socio-démographiques et des expositions associées. L’Analyse en Composantes Principales (ACP) a mis en évidence des corrélations significatives entre certaines cultures. Les variables « Blé ou Orge », « Maïs », « Prairies » et « Bovins » sont fortement liées au premier axe, tandis que la variable « Vignes » présente une corrélation négative avec ce même axe. Le second axe est principalement structuré autour des cultures de « Pois fourragers » et de « Colza », révélant une organisation cohérente des activités agricoles.
+
+La classification par K-means a révélé quatre clusters principaux représentatifs de la population agricole étudiée. Le Cluster 1 regroupe les exploitants de grandes cultures céréalières et oléagineuses, avec une forte présence de tournesol et colza, débutant leur carrière vers 20 ans et présentant la durée d'activité la plus longue malgré un tabagisme modéré. Le Cluster 2 rassemble les éleveurs bovins pratiquant la polyculture, caractérisés par un début de carrière précoce à 19 ans, un faible taux de tabagisme et une longue durée d'activité d'environ 28 ans. Le Cluster 5 se compose d'agriculteurs spécialisés dans les cultures industrielles comme les betteraves et pois fourragers, avec une proportion élevée de fumeurs (51,83%) consommant en moyenne 15,6 paquets par an. Enfin, le Cluster 6 regroupe les viticulteurs qui se distinguent par un début de carrière plus tardif, le plus fort taux de tabagisme et la durée d'activité la plus courte, suggérant des profils d'exposition professionnelle spécifiques.
+
+Ces résultats mettent en évidence l'hétérogénéité des profils d'exposition professionnelle dans le secteur agricole. La combinaison de facteurs tels que le type d'exploitation, les habitudes tabagiques et la durée d'activité génère des profils de risque distincts, nécessitant des stratégies préventives spécifiques. Ces éléments contribuent également à orienter les futures recherches épidémiologiques, en ciblant des populations précises et en affinant les approches de prévention.
+
+
+```{r fig.align='center', echo=FALSE}
+knitr::include_graphics("logo.png")
+```
