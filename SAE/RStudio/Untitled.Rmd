@@ -779,10 +779,15 @@ kbl(formatted_df, escape = FALSE, align = "c") %>%
 
 ## **Conclusion**
 
-Notre analyse des données de la cohorte AGRICAN a permis d'identifier des profils distincts d'agriculteurs, offrant ainsi une compréhension approfondie des expositions professionnelles et des caractéristiques socio-démographiques au sein de cette population.
+Tout au long de leur activité quotidienne et de leur parcours professionnel, les agriculteurs sont exposés à de nombreux facteurs susceptibles d’affecter leur santé. Ces expositions, multiples et complexes, peuvent être envisagées comme la combinaison d’agents physiques, chimiques, biologiques et comportementaux. Notre étude s’est appuyée sur les données de la cohorte AGRICAN, visant à évaluer l’impact des expositions professionnelles agricoles sur le risque de développer un cancer.
 
-L'Analyse en Composantes Principales a révélé des corrélations significatives entre différentes pratiques agricoles. Les variables "Blé ou Orge", "Maïs", "Prairies" et "Bovins" sont fortement corrélées avec le premier axe, tandis que "Vignes" présente une corrélation négative avec celui-ci. Le second axe est principalement défini par les "Pois Fourragers" et le "Colza", confirmant une structuration cohérente des activités agricoles.
+L’analyse de ces données a permis d’identifier des profils distincts d’agriculteurs, apportant une meilleure compréhension des pratiques agricoles, des caractéristiques socio-démographiques et des expositions associées. L’Analyse en Composantes Principales (ACP) a mis en évidence des corrélations significatives entre certaines cultures. Les variables « Blé ou Orge », « Maïs », « Prairies » et « Bovins » sont fortement liées au premier axe, tandis que la variable « Vignes » présente une corrélation négative avec ce même axe. Le second axe est principalement structuré autour des cultures de « Pois fourragers » et de « Colza », révélant une organisation cohérente des activités agricoles.
 
 La classification par K-means a révélé quatre clusters principaux représentatifs de la population agricole étudiée. Le Cluster 1 regroupe les exploitants de grandes cultures céréalières et oléagineuses, avec une forte présence de tournesol et colza, débutant leur carrière vers 20 ans et présentant la durée d'activité la plus longue malgré un tabagisme modéré. Le Cluster 2 rassemble les éleveurs bovins pratiquant la polyculture, caractérisés par un début de carrière précoce à 19 ans, un faible taux de tabagisme et une longue durée d'activité d'environ 28 ans. Le Cluster 5 se compose d'agriculteurs spécialisés dans les cultures industrielles comme les betteraves et pois fourragers, avec une proportion élevée de fumeurs (51,83%) consommant en moyenne 15,6 paquets par an. Enfin, le Cluster 6 regroupe les viticulteurs qui se distinguent par un début de carrière plus tardif, le plus fort taux de tabagisme et la durée d'activité la plus courte, suggérant des profils d'exposition professionnelle spécifiques.
 
 Ces résultats mettent en évidence l'hétérogénéité des profils d'exposition professionnelle dans le secteur agricole. La combinaison de facteurs tels que le type d'exploitation, les habitudes tabagiques et la durée d'activité génère des profils de risque distincts, nécessitant des stratégies préventives spécifiques. Ces éléments contribuent également à orienter les futures recherches épidémiologiques, en ciblant des populations précises et en affinant les approches de prévention.
+
+
+```{r fig.align='center', echo=FALSE}
+knitr::include_graphics("logo.png")
+```

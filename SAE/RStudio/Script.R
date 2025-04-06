@@ -1,14 +1,14 @@
 ################################################################################
-# Auteurs     : Maxime GAMONDELE, Salif SAMAKE, Rasmata SAWADOGO
+# Auteurs     : Maxime GAMONDELE, Salif SAMAKE ,Rasmata SAWADOGO
 # Projet      : SAE 4.02 - Reporting d'une analyse multivariée
 # Thématique  : Cohorte Agrican
-# Source      : GPCA
+# Source : Agrican
 # Nom fichier : Script.R
 ################################################################################
 
 
 ################################################################################
-#                        CHARGEMENT DES LIBRAIRIES                             #
+# --------------------------  Chargement des librairies  --------------------- #
 ################################################################################
 
 library(dplyr)
@@ -27,21 +27,22 @@ library(factoextra)
 library(magrittr)
 library(kableExtra)
 library(knitr)
+library(dplyr)
 library(gt)
 
 
 ################################################################################
-#                         IMPORTATION DES DONNÉES                              #
+# --------------------------  Importation des données  ----------------------- #
 ################################################################################
 data = readRDS("../Data/data1975Agrican")
 
 
 ################################################################################
-#                         PRÉPARATION DES DONNÉES                              #
+# --------------------------  Préparation des données  ----------------------- #
 ################################################################################
-# 1. Calcul des dates de début et fin d'activité totale
-################################################################################
-# Calcul de la date de début (minimum des dates de début par activité, excluant les valeurs nulles)
+
+
+
 data$date_deb_tot <- apply(
   data[, c("BovDeb2", "MouDeb2", "CocDeb2", "CheDeb2", "VolDeb2",
            "PraiDeb2", "VigneDeb2", "MaisFin2", "BleDeb2", "PoisDeb2", 
@@ -49,13 +50,13 @@ data$date_deb_tot <- apply(
            "PdTDeb2", "LegChampDeb2", "SerresDeb2")], 
   1, 
   function(x) {
-    x <- x[x > 0]  
-    if (length(x) == 0) return(NA)  
+    x <- x[x > 0] 
+    if (length(x) == 0) return(NA) 
     min(x, na.rm = TRUE)  
   }
 )
 
-# Calcul de la date de fin (maximum des dates de fin par activité)
+
 data$date_fin_tot = apply(data[, c("BovFin2", "MouFin2", "CocFin2", "CheFin2", "VolFin2",
                                    "PraiFin2","VigneFin2", "MaisFin2", "BleFin2", "PoisFin2", 
                                    "BetFin2", "TouFin2", "ColFin2", "TabacFin2", "ArbFin2",
@@ -64,13 +65,10 @@ data$date_fin_tot = apply(data[, c("BovFin2", "MouFin2", "CocFin2", "CheFin2", "
                           max,
                           na.rm = TRUE)  
 
-# Calcul de la durée totale d'activité
 data$duree_tot = data$date_fin_tot - data$date_deb_tot
 
 
-################################################################################
-# 2. Calcul des durées individuelles par type d'activité                       #
-################################################################################
+
 # Liste des noms des variables de début (Deb2)
 deb_cols <- c("BovDeb2", "MouDeb2", "CocDeb2", "CheDeb2", "VolDeb2",
               "PraiDeb2", "VigneDeb2", "MaisDeb2", "BleDeb2", "PoisDeb2", 
@@ -80,22 +78,21 @@ deb_cols <- c("BovDeb2", "MouDeb2", "CocDeb2", "CheDeb2", "VolDeb2",
 # Générer les noms des colonnes Fin2 en remplaçant "Deb2" par "Fin2"
 fin_cols <- gsub("Deb2", "Fin2", deb_cols)
 
+
 # Calcul de la durée pour chaque variable et création des nouvelles colonnes
 for (i in seq_along(deb_cols)) {
   duree_col <- paste0("duree_", gsub("Deb2", "", deb_cols[i])) 
-  data[[duree_col]] <- data[[fin_cols[i]]] - data[[deb_cols[i]]]  
+  data[[duree_col]] <- data[[fin_cols[i]]] - data[[deb_cols[i]]]
 }
 
 
-################################################################################
-# 3. Calcul des ratios de durée par rapport à la durée totale                  #
-################################################################################
+
 # Trouver toutes les colonnes de durée générées précédemment
 duree_cols <- grep("^duree_", colnames(data), value = TRUE)
 
 # Boucle pour créer les colonnes de ratio
 for (duree_col in duree_cols) {
-  ratio_col <- gsub("duree_", "ratio_", duree_col)  
+  ratio_col <- gsub("duree_", "ratio_", duree_col)  # Créer le nom du ratio
   
   # Calcul du ratio : durée individuelle / durée totale
   data[[ratio_col]] <- ifelse(data$duree_tot > 0, data[[duree_col]] / data$duree_tot, NA)
@@ -104,9 +101,6 @@ for (duree_col in duree_cols) {
 data <- subset(data, select = -ratio_tot)
 
 
-################################################################################
-# 4. Création d'une table de ratios                                            #
-################################################################################
 # Trouver toutes les colonnes de ratio générées précédemment
 ratio_cols <- grep("^ratio_", colnames(data), value = TRUE)
 
@@ -116,13 +110,8 @@ table_ratio <- data[, c("id", ratio_cols), drop = FALSE]
 str(data)
 
 
-################################################################################
-# 5. Sélection des cultures et élevages les plus fréquents                     #
-################################################################################
 # Trouver toutes les colonnes qui commencent par "Cult"
 cult_cols <- grep("^Cult", colnames(data), value = TRUE)
-
-# Calculer la fréquence d'apparition des valeurs non nulles pour chaque colonne "Cult"
 cult_frequencies <- colSums(data[, cult_cols] != 0, na.rm = TRUE)
 
 # Trier les colonnes par fréquence décroissante et garder les 8 premières
@@ -140,27 +129,27 @@ ratios <- table_ratio[, cols_to_keep]
 rownames(ratios) <- ratios$id
 ratios <- ratios[, -1]
 
-# Renommer les colonnes pour plus de clarté
+# Renommer les colonnes
 colnames(ratios) <- c(
-  "Prairies",          # ratio_Prai -> Prairies
-  "Blé ou orge",       # ratio_Ble -> Blé ou orge
-  "Mais",              # ratio_Mais -> Mais
-  "Vignes",            # ratio_Vigne -> Vignes
-  "Colza",             # ratio_Col -> Colza
-  "Tournesol",         # ratio_Tou -> Tournesol
-  "Bettraves",         # ratio_Bet -> Bettraves
-  "Pois fourragers",   # ratio_Pois -> Pois fourragers
-  "Bovins",            # ratio_Bov -> Bovins
-  "Moutons/Chèvres",   # ratio_Mou -> Moutons/chèvres
-  "Cochons",           # ratio_Coc -> Cochons
-  "Chevaux",           # ratio_Che -> Chevaux
-  "Volailles"          # ratio_Vol -> Volailles
+  "Prairies",          
+  "Blé ou orge",       
+  "Mais",              
+  "Vignes",            
+  "Colza",             
+  "Tournesol",         
+  "Bettraves",         
+  "Pois fourragers",   
+  "Bovins",            
+  "Moutons/Chèvres",   
+  "Cochons",           
+  "Chevaux",           
+  "Volailles"          
 )
 
 
-################################################################################
-# 6. Calcul des pourcentages de temps par tâche agricole                       #
-################################################################################
+
+
+# Pourcentage de la tâche pratiquée vis-à-vis de la carrière totale
 # Liste des tâches pour chaque activité
 taches_agricoles <- list(
   Prairies = c("PraiHerDebFinale2", "PraiFoinDebFinale2"),
@@ -177,11 +166,11 @@ taches_agricoles <- list(
 
 # Calculer la durée de chaque tâche (différence entre dates de début et de fin)
 for (tache in unlist(taches_agricoles)) {
-  fin_tache <- gsub("DebFinale2", "FinFinale2", tache)  # Trouver la colonne de fin correspondante
-  data[[paste0("duree_", tache)]] <- data[[fin_tache]] - data[[tache]]  # Calcul de la durée
+  fin_tache <- gsub("DebFinale2", "FinFinale2", tache)  
+  data[[paste0("duree_", tache)]] <- data[[fin_tache]] - data[[tache]] 
 }
 
-# Calculer le pourcentage de chaque tâche par rapport à la durée totale
+# Calculer le pourcentage de chaque tâche
 for (tache in unlist(taches_agricoles)) {
   # Calculer la durée de la tâche
   fin_tache <- gsub("DebFinale2", "FinFinale2", tache)
@@ -194,7 +183,7 @@ for (tache in unlist(taches_agricoles)) {
            NA)
 }
 
-# Créer ratio2 avec les pourcentages
+# Créer ratio2
 ratio2 <- data %>%
   select(id, starts_with("pourcentage_"))
 
@@ -206,25 +195,22 @@ colnames(ratio2) <- gsub("DebFinale2", "", colnames(ratio2))
 head(ratio2)
 
 
-################################################################################
-#                         ANALYSE EN COMPOSANTES PRINCIPALES                    #
-################################################################################
 
 ################################################################################
-# 1. Tableau des valeurs propres                                               #
+#                         Tableau des valeurs propres                          #
 ################################################################################
 res.pca = PCA(ratios, scale.unit = TRUE, graph = FALSE)
 df <- res.pca$eig %>%
   as.data.frame() %>%
-  select(-1) %>%  # Suppression de la première colonne (Eigen values)
+  select(-1) %>% 
   setNames(c("% d'inertie", "% d'inertie cumulé")) %>%
   mutate(
-    `% d'inertie` = round(as.numeric(`% d'inertie`), 2),  # Arrondi à 2 décimales
-    `% d'inertie cumulé` = round(as.numeric(`% d'inertie cumulé`), 2)  # Arrondi à 2 décimales
+    `% d'inertie` = round(as.numeric(`% d'inertie`), 2),  
+    `% d'inertie cumulé` = round(as.numeric(`% d'inertie cumulé`), 2) 
   )
 
 # Sélectionner les lignes à surligner (comp 1 à comp 8)
-color.me <- 8  # Indices des lignes à colorer
+color.me <- 8  
 
 # Générer le tableau avec kableExtra
 df %>%
@@ -234,12 +220,15 @@ df %>%
 
 
 ################################################################################
-# 2. Exécution de l'ACP et visualisation                                       #
+#                                                                              #
+#                           Analyse en Composante Principale                   #
+#                                                                              #
 ################################################################################
-res.pca = PCA(ratios, scale.unit = TRUE, graph = FALSE, ncp = 8)
+
+
+res.pca = PCA(ratios, scale.unit = TRUE, graph = FALSE,ncp = 8)
 # Extraire le pourcentage d'inertie cumulée
 
-# Graphique du cercle des corrélations pour visualiser les variables
 fviz_pca_var(res.pca, 
              col.var = "springgreen4",       
              alpha.var = 8,             
@@ -260,24 +249,23 @@ fviz_pca_var(res.pca,
 
 
 inertie_cum = res.pca$eig
-# En utilisant le critère de 80% de l'inertie restituée, on serait amener à séléctionner les 8 premières composantes.
-
 
 
 ################################################################################
-# 3. Matrice des corrélations variables-composantes principales                #
+#  Matrice des corélation entre les variables et les composantes principales   #
 ################################################################################
+
 cor_matrix <- as.data.frame(round(res.pca$var$cor[, 1:4], 2))
 
 # Appliquer le surlignage colonne par colonne
 cor_matrix_html <- cor_matrix %>%
   mutate(across(everything(), ~ cell_spec(.x, "html",
-                                          color = ifelse(abs(.x) > 0.6, "white",  # Blanc si fond rouge (>0.6)
-                                                         ifelse(abs(.x) > 0.4, "white",   # Blanc si fond orange (>0.4)
-                                                                ifelse(abs(.x) > 0.2, "black", "black"))),  # Noir si fond jaune (0.2<x≤0.4), Noir sinon
-                                          background = ifelse(abs(.x) > 0.6, "red",   # Rouge si |x| > 0.6
-                                                              ifelse(abs(.x) > 0.4, "orange",   # Orange si |x| > 0.4
-                                                                     ifelse(abs(.x) > 0.2, "yellow", "transparent"))),  # Jaune si |x| > 0.2, sinon blanc
+                                          color = ifelse(abs(.x) > 0.6, "white",
+                                                         ifelse(abs(.x) > 0.4, "white",
+                                                                ifelse(abs(.x) > 0.2, "black", "black"))),
+                                          background = ifelse(abs(.x) > 0.6, "red",   
+                                                              ifelse(abs(.x) > 0.4, "orange",
+                                                                     ifelse(abs(.x) > 0.2, "yellow", "transparent"))),
                                           align = "center")))
 
 
@@ -287,14 +275,20 @@ cor_matrix_html %>%
   kable_styling(full_width = FALSE, font_size = 14)
 
 
+
+
+
 ################################################################################
-#                         CLASSIFICATION AUTOMATIQUE (K-MEANS)                  #
+#                           Classiffication automatique
+#                               A l'aide des K-Means
+#
 ################################################################################
 
 ################################################################################
-# 1. Détermination du nombre optimal de clusters                               #
+# ------------------------- Coude pour le nombre de cluster     -------------- #
 ################################################################################
-# La méthode du coude est utilisée pour déterminer le nombre optimal de clusters
+#ici on voit une cassure à 6 donc on choisi 6 class d'apres la methode du coude
+
 fviz_nbclust(res.pca$var$coord,
              hcut,
              k.max = 12,
@@ -306,16 +300,17 @@ fviz_nbclust(res.pca$var$coord,
 clust_data <- res.pca$ind$coord[, 1:8]
 
 
+
 ################################################################################
-# 2. Effectifs par cluster                                                     #
+# -------------------------  Tableau des effectifs par cluster     -------------#
 ################################################################################
-set.seed(123) 
+set.seed(123)
 # 1. Appliquer K-Means
-km.res <- kmeans(clust_data, centers = 8, nstart = 50)
+km.res <- kmeans(clust_data, centers = 8,nstart = 50)
 
 # 2. Créer un tableau des fréquences des clusters
 cluster_counts <- as.data.frame(table(km.res$cluster))
-colnames(cluster_counts) <- c("Cluster", "Effectif") 
+colnames(cluster_counts) <- c("Cluster", "Effectif")
 
 # Top 4 des clusters avec le plus grands effectif
 top_4_effectifs <- cluster_counts %>% 
@@ -327,8 +322,8 @@ top_4_effectifs <- cluster_counts %>%
 cluster_counts_html <- cluster_counts %>% 
   mutate(
     Effectif = cell_spec(Effectif, "html", 
-                         color = ifelse(Effectif %in% top_4_effectifs, "white", "black"),  
-                         background = ifelse(Effectif %in% top_4_effectifs, "red", "white"), 
+                         color = ifelse(Effectif %in% top_4_effectifs, "white", "black"),
+                         background = ifelse(Effectif %in% top_4_effectifs, "red", "white"),
                          align = "center")
   )
 
@@ -339,8 +334,9 @@ cluster_counts_html %>%
 
 
 ################################################################################
-# 3. Cultures les plus fréquentes                                              #
+# -------------------  Tableau des cultures les plus fréquentes    ------------#
 ################################################################################
+
 # Extraire les 8 cultures les plus fréquentes
 cult_frequencies <- colSums(data[, cult_cols] != 0, na.rm = TRUE)
 
@@ -354,7 +350,7 @@ top_8_cult_table <- data.frame(
 )
 
 top_8_cult_table %>% 
-  select(-Culture) -> top_8_cult_table
+  select(-Culture)->top_8_cult_table
 
 rownames(top_8_cult_table) <- c(
   "Prairies",
@@ -367,6 +363,7 @@ rownames(top_8_cult_table) <- c(
   "Pois fourragers"
 )
 
+
 top_3_freq <- top_8_cult_table %>% 
   arrange(desc(Fréquence)) %>% 
   head(3) %>% 
@@ -376,8 +373,8 @@ top_3_freq <- top_8_cult_table %>%
 culture_matrix_html <- top_8_cult_table %>% 
   mutate(
     Fréquence = cell_spec(Fréquence, "html", 
-                          color = ifelse(Fréquence %in% top_3_freq, "white", "black"),  
-                          background = ifelse(Fréquence %in% top_3_freq, "red", "white"),  
+                          color = ifelse(Fréquence %in% top_3_freq, "white", "black"), 
+                          background = ifelse(Fréquence %in% top_3_freq, "red", "white"),
                           align = "center")
   )
 
@@ -386,11 +383,6 @@ culture_matrix_html <- top_8_cult_table %>%
 culture_matrix_html %>%
   kbl(escape = FALSE, align = "c") %>%
   kable_styling(full_width = FALSE, font_size = 14)
-
-
-################################################################################
-#                     ANALYSE DES CLUSTERS ET INTERPRÉTATION                    #
-################################################################################
 
 # Ajouter les clusters aux données
 data$Cluster <- as.factor(km.res$cluster)
@@ -417,7 +409,7 @@ tableau_synthese <- data_filtered %>%
     "Durée moyenne d'activité (écart-type)" = paste0(round(mean(duree_tot, na.rm = TRUE), 2), 
                                                      " (", round(sd(duree_tot, na.rm = TRUE), 2), ")")
   ) %>%
-  mutate(across(everything(), as.character)) %>%  # Convertir toutes les colonnes en caractères
+  mutate(across(everything(), as.character)) %>%
   pivot_longer(-Cluster, names_to = "Variable", values_to = "Valeur") %>%
   pivot_wider(names_from = "Cluster", values_from = "Valeur")
 
@@ -428,24 +420,22 @@ tableau_synthese %>%
 tableau_synthese_html <- tableau_synthese %>%
   rownames_to_column(var = "Cluster") %>%
   rowwise() %>%
-  mutate(across(-Cluster,  
+  mutate(across(-Cluster,  # Exclure la colonne des noms
                 ~ ifelse(as.numeric(gsub("\\s*\\(.*\\)", "", .x)) == 
                            max(as.numeric(gsub("\\s*\\(.*\\)", "", c_across(everything()))), na.rm = TRUE),  
                          cell_spec(.x, "html", align = "center", bold = TRUE,  
                                    background = "red", color = "white"),  
                          cell_spec(.x, "html", align = "center")))) %>%
-  ungroup()  
+  ungroup()  # Sortir du mode rowwise()
 
 
-# Générer le tableau HTML avec kableExtra 
+# Générer le tableau HTML avec kableExtra (sans remettre en rownames)
 tableau_synthese_html %>%
   kbl(escape = FALSE, align = "c") %>%
   kable_styling(full_width = FALSE, font_size = 14)
 
 
-################################################################################
-#              ANALYSE DÉTAILLÉE DES CARACTÉRISTIQUES DES CLUSTERS             #
-################################################################################
+
 
 km_res_df <- data.frame(ID = names(km.res$cluster), cluster = km.res$cluster)
 
@@ -455,12 +445,11 @@ names(merged_df)[1] <- "ID"
 cluster_sizes <- table(merged_df$cluster)
 
 top_clusters <- sort(cluster_sizes, decreasing = TRUE)[1:4]
-top_cluster_ids <- as.integer(names(top_clusters))  
+top_cluster_ids <- as.integer(names(top_clusters))
 
 filtered_df <- merged_df[merged_df$cluster %in% top_cluster_ids, ]
-filtered_df$cluster <- as.factor(filtered_df$cluster)  
+filtered_df$cluster <- as.factor(filtered_df$cluster)
 
-# Remplacer les valeurs manquantes par la moyenne
 filtered_df <- filtered_df %>%
   mutate(across(where(is.numeric), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
 
@@ -472,44 +461,49 @@ var_names <- names(filtered_df)[numeric_cols]
 
 result_df <- data.frame(Variable = var_names)
 
-# Calculer les moyennes par cluster
 for (cl in top_cluster_ids) {
   cluster_data <- filtered_df[filtered_df$cluster == cl, ]
-  means <- sapply(var_names, function(var) mean(cluster_data[[var]], na.rm = TRUE))
+  means <- sapply(var_names, function(var) mean(cluster_data[[var]],
+                                                na.rm = TRUE))
   col_name <- paste0("Moyenne_C", cl)
   result_df[[col_name]] <- means
 }
 
-global_means <- sapply(var_names, function(var) mean(merged_df[[var]], na.rm = TRUE))
+global_means <- sapply(var_names, function(var) mean(merged_df[[var]],
+                                                     na.rm = TRUE))
 result_df$Moyenne_Globale <- global_means  
 
-# Analyse des variables caractéristiques par cluster
-res.catdes <- catdes(filtered_df, num.var = which(names(filtered_df) == "cluster"), proba = 1)
+res.catdes <- catdes(filtered_df,
+                     num.var = which(names(filtered_df) == "cluster"),
+                     proba = 1)
 
 
 bon_cluster <- as.numeric(names(res.catdes$quanti))
 
 final_df <- data.frame(Variable = rownames(res.catdes$quanti[[bon_cluster[1]]]))
 
-# Extraction des moyennes et v-test par cluster
 for (cl in bon_cluster) {
   mean_values <- res.catdes$quanti[[as.character(cl)]][, "Mean in category"]
   v_test_values <- res.catdes$quanti[[as.character(cl)]][, "v.test"]
   
-  final_df[[paste0("Moy c", cl)]] <- mean_values[match(final_df$Variable, rownames(res.catdes$quanti[[as.character(cl)]]))]
-  final_df[[paste0("v-test c", cl)]] <- v_test_values[match(final_df$Variable, rownames(res.catdes$quanti[[as.character(cl)]]))]
+  final_df[[paste0("Moy c", cl)]] <- mean_values[match(final_df$Variable, 
+                                                       rownames(res.catdes$quanti[[as.character(cl)]]))]
+  final_df[[paste0("v-test c", cl)]] <- v_test_values[match(final_df$Variable,
+                                                            rownames(res.catdes$quanti[[as.character(cl)]]))]
 }
 
-final_df$Moyenne <- rowMeans(sapply(bon_cluster, function(cl) {
-  res.catdes$quanti[[as.character(cl)]][, "Mean in category"]
+final_df$Moyenne <- rowMeans(sapply(bon_cluster, 
+                                    function(cl) {
+  res.catdes$quanti[[as.character(cl)]][,
+                                        "Mean in category"]
 }), na.rm = TRUE)
 
 final_df[,-1] <- round(final_df[,-1], 3)  
 
-# Réorganiser les colonnes
 ordered_cols <- c("Variable")
 for (cl in bon_cluster) {
-  ordered_cols <- c(ordered_cols, paste0("Moy c", cl), paste0("v-test c", cl))
+  ordered_cols <- c(ordered_cols, paste0("Moy c", cl),
+                    paste0("v-test c", cl))
 }
 
 ordered_cols <- c(ordered_cols, "Moyenne")
@@ -522,7 +516,6 @@ for (col in vtest_cols) {
 }
 formatted_df <- final_df
 
-# Mise en forme conditionnelle du tableau final
 moy_cols <- grep("^Moy", names(formatted_df))
 vtest_cols <- grep("^v-test", names(formatted_df))
 
@@ -530,7 +523,7 @@ for (i in 1:length(moy_cols)) {
   moy_col <- moy_cols[i]
   vtest_col <- vtest_cols[i]
   
-  # Mettre en évidence les valeurs significatives
+  
   for (row in 1:nrow(formatted_df)) {
     if (!is.na(formatted_df[row, vtest_col]) && 
         is.numeric(formatted_df[row, vtest_col]) && 
@@ -546,6 +539,6 @@ for (i in 1:length(moy_cols)) {
 }
 
 
-# Génération du tableau HTML final
+# Table HTML
 kbl(formatted_df, escape = FALSE, align = "c") %>%
   kable_styling(full_width = FALSE, font_size = 14)
